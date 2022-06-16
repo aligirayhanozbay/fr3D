@@ -1,0 +1,30 @@
+{
+    "mesh": {
+    	"xmin": -10.0,
+    	"xmax": 10.0,
+    	"ymin": -10.0,
+    	"ymax": 10.0,
+	"extruded": [10.0,24],
+	"edge_method": "polyline",
+	"boundary_layer_parameters": {
+                "Quads": 1,
+                "Size": 0.3,
+                "SizeFar": 1.2,
+                "BetaLaw": 1,
+                "NbLayers": 2,
+                "Beta": 1.5
+        },
+	"wake_refinement": {
+		"VIn": 0.3
+	},
+	"obstacle_element_scale": 0.3
+    	},
+    "shape": {
+    	"n_control_pts": 4,
+    	"n_sampling_pts": 8,
+    	"radius": [0.5],
+    	"edgy": [1.0],
+    	"control_pts": null
+    	},
+    "generate": {"magnify": 3.5}
+}

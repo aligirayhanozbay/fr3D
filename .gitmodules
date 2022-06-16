@@ -1,0 +1,3 @@
+[submodule "bezier_shapes"]
+	path = bezier_shapes
+	url = git@github.com:aligirayhanozbay/bezier_shapes.git
