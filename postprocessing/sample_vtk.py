@@ -115,6 +115,7 @@ class PostprocessingManager:
         -filters: tuple[paraview filter class objects, dict]. filters[k][0] is the filter to apply in the paraview data pipeline and filters[k][1] is a dict containing kwargs to pass to the initializer of filters[k][0]
         -ignore_list: tuple[str]. list of cases to ignore
         -time_window: tuple[str,str]. solutions from times outside this range will be discarded.
+        -save_dtype: str. "float32" or "float64".
         '''
     def __init__(self,
                  output_path: str,
@@ -124,12 +125,14 @@ class PostprocessingManager:
                  sampling_pts_fullfield: np.ndarray,
                  filters: tuple = tuple(),
                  ignore_list: tuple[str] = tuple(),
-                 time_window = (-np.inf,np.inf)
+                 time_window = (-np.inf,np.inf),
+                 save_dtype = 'float32'
                  ):
         
         self.output_path = resolve_path(output_path)
         self.output_fields = output_fields
         self.filters = filters
+        self.save_dtype = save_dtype
 
         files_list = self.get_solutions_and_meshes(resolve_path(dataset_dir), time_window=time_window)
 
@@ -179,22 +182,28 @@ class PostprocessingManager:
             
         return tuple(solns_and_meshes)
             
-    def start(self):
-        n_readers = mp.cpu_count()//4
+    def run(self):
+        n_readers = mp.cpu_count()//2
         self._nworkitems = self.read_queue.qsize()
         processes = [mp.Process(target=self.reader_process) for _ in range(n_readers)]
+        writer_process = mp.Process(target=self.writer_process)
         for proc in processes:
             proc.start()
+        writer_process.start()
 
         for proc in processes:
             proc.join()
-        import pdb; pdb.set_trace()
+
+        self.write_queue.put(-1)
+        writer_process.join()
+            
+        return
 
     def reader_process(self):
         while not self.read_queue.empty():
             if self.verbose:
                 rem_work_items = self.read_queue.qsize()
-                print(f'{self._nworkitems-rem_work_items+1}/{self._nworkitems+1}')
+                print(f'Reading {self._nworkitems-rem_work_items+1}/{self._nworkitems+1}')
             
             case_name, meshf, pyfrsf = self.read_queue.get()
             soln_time = self._get_soln_time_from_filename(pyfrsf)
@@ -207,60 +216,35 @@ class PostprocessingManager:
         return
 
     def writer_process(self):
-        pass
-        #with h5py.File(self.output_path, 'w') as outf:
-        #    pass
-        #return  
+        with h5py.File(self.output_path, 'w') as outf:
+           while True:
+               data = self.write_queue.get()
+               if data == -1:
+                   return
 
-    # def start(self):
-    #     proc0 = mp.Process(target=self.reader_process, args=(0,))
-    #     proc0.start()
-    #     proc1 = mp.Process(target=self.reader_process, args=(1,))
-    #     proc1.start()
+               case_name, tidx, sensor_values, full_field_values = data
+               if case_name not in outf:
+                   sensor_values_shape = [len(self.soln_times_indices[case_name]), *sensor_values.shape]
+                   full_field_shape = [len(self.soln_times_indices[case_name]), *full_field_values.shape]
+                   
+                   sg = outf.create_group(case_name)
+                   sg.create_dataset('sensors', sensor_values_shape, dtype=self.save_dtype)
+                   sg.create_dataset('full_field', full_field_shape, dtype=self.save_dtype)
+                   
+               outf[case_name]['sensors'][tidx] = sensor_values
+               outf[case_name]['full_field'][tidx] = full_field_values
 
-    #     self.mutexes[0].acquire()
-    #     print('mutex 0 - parent acquired')
-    #     self.mutexes[0].release()
-    #     self.mutexes[1].acquire()
-    #     print('mutex 1 - parent acquired')
-    #     self.mutexes[1].release()
-
-    #     time.sleep(5)
-
-    #     self.mutexes[0].acquire()
-    #     print('mutex 0 - parent acquired')
-    #     self.mutexes[0].release()
-    #     self.mutexes[1].acquire()
-    #     print('mutex 1 - parent acquired')
-    #     self.mutexes[1].release()
-
-    #     proc0.join()
-    #     proc1.join()
-
-    #     return
-        
-
-    # def reader_process(self, mtx_idx):
-    #     self.mutexes[mtx_idx].acquire()
-    #     time.sleep(5)
-    #     print(f'proc {mtx_idx} - child acquired mutex')
-    #     self.mutexes[mtx_idx].release()
-    #     for k in range(2):
-    #         time.sleep(5)
-    #         self.mutexes[mtx_idx].acquire()
-    #         print(f'proc {mtx_idx} - child acquired mutex')
-    #         self.mutexes[mtx_idx].release()
-    #     return
+               print(f'Wrote {case_name} {tidx}')
 
     
 if __name__ == '__main__':
     c = np.stack(np.meshgrid(
-        np.linspace(2.0,4.0,6),
-        np.linspace(-1.0,1.0,6),
-        np.linspace(2.0,4.0,6),
+        np.linspace(2.0,4.0,64),
+        np.linspace(-1.0,1.0,64),
+        np.linspace(2.0,4.0,64),
         indexing='ij'
     ),-1)
-    nsensors = 12
+    nsensors = 128
     s = np.stack([5*np.ones(nsensors),0*np.ones(nsensors),np.linspace(2.0,8.0,nsensors)],-1)
     
 
@@ -277,7 +261,7 @@ if __name__ == '__main__':
                                sampling_pts_fullfield=c,
                                time_window=[20.0,60.0],
                                )
-    pm.start()
+    pm.run()
 
     import pdb; pdb.set_trace()
 
