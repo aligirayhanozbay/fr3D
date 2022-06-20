@@ -8,7 +8,7 @@ RUN apt update && apt install --no-install-recommends -y gfortran git libmetis-d
 RUN curl -O https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh && chmod +x Miniconda3-latest-Linux-x86_64.sh && ./Miniconda3-latest-Linux-x86_64.sh -b && eval "$(/root/miniconda3/bin/conda shell.bash hook)" && conda init
 ENV PATH=/root/miniconda3/bin:$PATH
 RUN conda install -n base conda-forge::mamba
-RUN mamba install -y -c conda-forge cudatoolkit=11.2 tensorflow=2.6.2 openmpi openmpi-mpicxx gxx_linux-64 gmsh python-gmsh tqdm scikit-learn make matplotlib paraview
+RUN mamba install -y -c conda-forge cudatoolkit=11.2 tensorflow=2.6.2 openmpi openmpi-mpicxx gxx_linux-64 gmsh python-gmsh tqdm scikit-learn make matplotlib paraview libxsmm
 RUN pip3 install pygmsh pyfr==1.14.0
 
 RUN cd / && git clone https://github.com/aligirayhanozbay/pydscpack/ && cd /pydscpack && pip3 install -e .
