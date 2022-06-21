@@ -1,11 +1,6 @@
 import os
-import re
-import tempfile
-import shutil
 import numpy as np
-
-from collections import defaultdict
-from dataclasses import dataclass
+import h5py
 
 from pyfr.plugins.sampler import SamplerPlugin
 from pyfr.readers.native import NativeReader
@@ -14,20 +9,18 @@ from pyfr.mpiutil import register_finalize_handler
 from pyfr.backends import get_backend
 from pyfr.solvers import get_solver
 from pyfr.rank_allocator import get_rank_allocation
-from pyfr.partitioners import BasePartitioner, get_partitioner
-from pyfr.util import subclasses
-from pyfr.writers.native import NativeWriter, write_pyfrms
 from pyfr.mpiutil import get_comm_rank_root
 
 class SamplerWrapper(SamplerPlugin):
     name = 'samplerwrapper'
 
-    def __call__(self, intg):
+    def __call__(self, pyfrs_path):
         # MPI info
         comm, rank, root = get_comm_rank_root()
 
         # Get the solution matrices
-        solns = intg.soln
+        solns_file = h5py.File(pyfrs_path, 'r')
+        solns = [np.array(solns_file[x]) for x in filter(lambda x: solns_file[x].shape != tuple(), solns_file.keys())]
 
         # Perform the sampling and interpolation
         samples = [op @ solns[et][:, :, ei] for et, ei, _, op in self._ourpts]
@@ -44,7 +37,7 @@ def _convert_sampling_pts_to_pyfr_format(x):
 
     return str([tuple(z) for z in x])
 
-def load_pyfr_integrator(pyfrm_path, pyfrs_path, sampling_pts, config_path=None):
+def process_case(pyfrm_path, pyfrs_paths, sampling_pts, config_path=None):
     # Work around issues with UCX-derived MPI libraries
     os.environ['UCX_MEMTYPE_CACHE'] = 'n'
     
@@ -57,7 +50,7 @@ def load_pyfr_integrator(pyfrm_path, pyfrs_path, sampling_pts, config_path=None)
 
     #import pdb; pdb.set_trace()
     mesh = NativeReader(pyfrm_path)
-    soln = NativeReader(pyfrs_path)
+    soln = NativeReader(pyfrs_paths[0])
     
 
     if config_path is not None:
@@ -90,22 +83,29 @@ def load_pyfr_integrator(pyfrm_path, pyfrs_path, sampling_pts, config_path=None)
     # Construct the solver
     solver = get_solver(backend, rallocs, mesh, soln, cfg)
 
-    #do something like
-    #mp = solver.completed_step_handlers[-1](solver)
-    #find a way to update solver.soln to sample data from multiple files at once
+    #Interpolate
+    results = []
+    for f in pyfrs_paths:
+        results.append(solver.completed_step_handlers[-1](f))
 
-    return solver
-    
+    results = np.stack(results,0)
+
+    return results
+
         
 if __name__ == '__main__':
+    npts=16
     c = np.stack(np.meshgrid(
-        np.linspace(2.0,4.0,64),
-        np.linspace(-1.0,1.0,64),
-        np.linspace(2.0,4.0,64),
+        np.linspace(2.0,4.0,npts),
+        np.linspace(-1.0,1.0,npts),
+        np.linspace(2.0,4.0,npts),
         indexing='ij'
     ),-1)
     
     pyfrm = '/fr3D/pp_test/shape_101/shape_101.pyfrm'
-    pyfrs = '/fr3D/pp_test/shape_101/solution/soln-50.00.pyfrs'
+    pyfrs = ['/fr3D/pp_test/shape_101/solution/soln-20.00.pyfrs', '/fr3D/pp_test/shape_101/solution/soln-50.00.pyfrs']
 
-    intg = load_pyfr_integrator(pyfrm, pyfrs, c)
+    res = process_case(pyfrm, pyfrs, c)
+
+    
+    

@@ -4,6 +4,7 @@ import secrets
 import numpy as np
 import tempfile
 from dataclasses import dataclass
+import time
 
 from paraview.simple import OpenDataFile, TableToPoints, CSVReader, ResampleWithDataset, PassArrays, Delete
 from paraview import servermanager as sm
@@ -25,6 +26,7 @@ def sample_vtk(filename: str, sampling_pts: np.ndarray, output_fields: tuple[str
     fpath = resolve_path(filename)
 
     #load file and run pipeline
+    t0 = time.time()
     pvobj = OpenDataFile(fpath)
     pipeline = [pvobj]
     for filt in filters:
@@ -33,17 +35,29 @@ def sample_vtk(filename: str, sampling_pts: np.ndarray, output_fields: tuple[str
     pvobj = PassArrays(pvobj, PointDataArrays=output_fields)
     pipeline.append(pvobj)
     pipeline[-1].UpdatePipeline()
+    t1 = time.time()
+    print(f'Primary pipeline: {t1-t0} secs')
 
     #make a temporary csv file for the 2nd dataset - FIX LATER
     csvf = tempfile.NamedTemporaryFile(suffix='.csv')
     np.savetxt(csvf, sampling_pts.reshape(-1, sampling_pts.shape[-1]), delimiter=',', header='X,Y,Z', comments='')
     csvf.seek(0)
     coord_tab = OpenDataFile(csvf.name)
+    t21 = time.time()
     coord_tab = TableToPoints(coord_tab, XColumn='X', YColumn='Y', ZColumn='Z')
-
+    coord_tab.UpdatePipeline()
+    print(f'Sampling - save/load csv: {t21 - t1} secs')
+    
     #sample at coordinates
     resampled_data = ResampleWithDataset(pipeline[-1], DestinationMesh=coord_tab)
+    resampled_data.UpdatePipeline()
+    t22 = time.time()
+    print(f'Sampling - Resample: {t22 - t21} secs')
     vtk_data = dsa.WrapDataObject(sm.Fetch(resampled_data))
+    t23 = time.time()
+    print(f'Sampling - Wrappers: {t23 - t22} secs')
+    t2 = time.time()
+    print(f'Sampling: {t2-t1} secs')
 
     output_arrays = []
     for field in output_fields:
@@ -52,9 +66,17 @@ def sample_vtk(filename: str, sampling_pts: np.ndarray, output_fields: tuple[str
     output_arrays = np.concatenate(output_arrays,-1)
 
     pipeline = pipeline + [resampled_data, coord_tab]
+    t3 = time.time()
+    print(f'Reshaping: {t3-t2} secs')
+    
     for pvobj in pipeline:
         Delete(pvobj)
     del pipeline, pvobj, resampled_data, coord_tab
+    t4 = time.time()
+    print(f'Cleanup: {t4-t3}')
+
+    log = f'Primary pipeline: {t1-t0} secs | Sampling: {t2-t1} secs | Reshaping: {t3-t2} secs | Cleanup: {t4-t3} secs'
+    print(f'{filename} log: {log}')
     
     return output_arrays
 
@@ -239,9 +261,9 @@ class PostprocessingManager:
     
 if __name__ == '__main__':
     c = np.stack(np.meshgrid(
-        np.linspace(2.0,4.0,64),
-        np.linspace(-1.0,1.0,64),
-        np.linspace(2.0,4.0,64),
+        np.linspace(2.0,4.0,16),
+        np.linspace(-1.0,1.0,16),
+        np.linspace(2.0,4.0,16),
         indexing='ij'
     ),-1)
     nsensors = 128
