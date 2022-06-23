@@ -48,7 +48,6 @@ class PostprocessingManager:
     def __init__(self,
                  output_path: str,
                  dataset_dir: str,
-                 output_fields: tuple[str],
                  sampling_pts_sensors: np.ndarray,
                  sampling_pts_fullfield: np.ndarray,
                  ignore_list: tuple[str] = tuple(),
@@ -57,7 +56,6 @@ class PostprocessingManager:
                  ):
         
         self.output_path = resolve_path(output_path)
-        self.output_fields = output_fields
         self.save_dtype = save_dtype
         self.ignore_list = ignore_list
 
@@ -154,7 +152,28 @@ class PostprocessingManager:
                sg.create_dataset('sensors', data=sensor_values, dtype=self.save_dtype)
                sg.create_dataset('full_field', data=full_field_values, dtype=self.save_dtype)
 
-               print(f'Wrote {case_name}')
+               if self.verbose:
+                   print(f'Wrote {case_name}')
+
+def main():
+    import argparse
+    from sampling_pts import get_samplingptshandler
+
+    explanation = '''
+    Postprocess a folder of PyFR results, interpolating the results from each case to specified points.
+
+    This script outputs a .h5 file containing two fields for each PyFR case, the 'sensors' and the 'full_field'.
+    '''
+    
+    parser = argparse.ArgumentParser(explanation)
+    parser.add_argument('input_dir', type=str, help='Folder containing the cases. See PostprocessingManager.__doc__')
+    parser.add_argument('output_file', type=str, help='Path to the output file')
+    parser.add_argument('-t', nargs=2, type=float, help='Time window. Provide 2 floats to mark tbegin and tend', default=(-np.inf,np.inf))
+    parser.add_argument('--ignore', nargs='*', type=str, help='Cases (i.e. subdirectories) inside input_dir to ignore.', default=tuple())
+    parser.add_argument('-d', type=str, help='Save datatype. float32 or float64.', default='float32')
+
+    args = parser.parse_args()
+    
 
 if __name__ == '__main__':
     c = np.stack(np.meshgrid(
@@ -166,8 +185,7 @@ if __name__ == '__main__':
     nsensors = 128
     s = np.stack([5*np.ones(nsensors),0*np.ones(nsensors),np.linspace(2.0,8.0,nsensors)],-1)
 
-    pm = PostprocessingManager('/tmp/test.h5', '/fr3D/pp_test',
-                               output_fields=['Pressure', 'Velocity'],
+    pm = PostprocessingManager('/tmp/test.h5', '/fr3D/pp_test2',
                                sampling_pts_sensors=s,
                                sampling_pts_fullfield=c,
                                time_window=[20.0,60.0]
