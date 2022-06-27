@@ -38,6 +38,14 @@ class NumpySamplingPts(BaseSamplingPts):
 
         super().__init__()
 
+class GridSamplingPts(BaseSamplingPts):
+    name= 'grid'
+    __doc__ = 'Sampling pts on a grid'
+    def __init__(self, linspace_args):
+        self._pts = np.stack(np.meshgrid(*[np.linspace(*l) for l in linspace_args], indexing='ij'), -1)
+
+        super().__init__()
+
 def _vertex_renumbering_filter_nodemap(x):
     out = {}
     min_encountered = {}
@@ -137,20 +145,28 @@ class PyfrmRelativeSamplingPts(PyfrmSamplingPts):
         
 class PyfrmAnnulusGridSamplingPts(PyfrmSamplingPts):
     name='pyfrm-annulus'
-    __doc__=''
+    __doc__='''
+    Takes the specified physical group (physgrp) in the pyfrm file, calculates the outer boundaries of the fluid domain and computes a Schwarz-Christoffel mapping the fluid domain to an (extruded) annulus. Samples a regular grid, equispaced in the r, theta and z directions, on the annular cylinder and maps the points back to the original fluid domain.
+    '''
     
-    def __init__(self, pyfrm, physgrp, npts, extrusion_dim=2):
+    def __init__(self, pyfrm, physgrp, npts, extrusion_dim=2, outer_box=None):
         cross_sxn, extr_dim_coords  = self._extract_physical_grp_vertices(pyfrm, physgrp, extrusion_dim=extrusion_dim)
         extr_dim_min, extr_dim_max = np.min(extr_dim_coords), np.max(extr_dim_coords)
         # extr_dim_coords = np.ones([npts[extrusion_dim], 3], dtype=extr_dim_coords)
         # extr_dim_coords[:,extrusion_dim] = np.linspace(np.min(extr_dim_coords), np.max(extr_dim_coords), npts[extrusion_dim])
-        
-        domain_mins, domain_maxes = self._extract_domain_extrema(pyfrm)
-        domain_mins = np.delete(domain_mins, extrusion_dim)
-        domain_maxes = np.delete(domain_maxes, extrusion_dim)
-        domain_extents = [(start, end) for start, end in zip(domain_mins, domain_maxes)]
-        outer_box = np.array([(domain_extents[0][0],domain_extents[1][0]),(domain_extents[0][0],domain_extents[1][1]),(domain_extents[0][1],domain_extents[1][0]), (domain_extents[0][1],domain_extents[1][1])])
-        import pdb; pdb.set_trace()
+
+        if outer_box is None:
+            domain_mins, domain_maxes = self._extract_domain_extrema(pyfrm)
+            domain_mins = np.delete(domain_mins, extrusion_dim)
+            domain_maxes = np.delete(domain_maxes, extrusion_dim)
+            domain_extents = [(start, end) for start, end in zip(domain_mins, domain_maxes)]
+            outer_box = np.array([(domain_extents[0][0],domain_extents[1][0]),(domain_extents[0][0],domain_extents[1][1]),(domain_extents[0][1],domain_extents[1][0]), (domain_extents[0][1],domain_extents[1][1])])
+        elif isinstance(outer_box, dict):
+            outer_box_sampler = get_samplingptshandler(**outer_box)
+            outer_box = outer_box_sampler.pts
+        else:
+            outer_box = np.array(outer_box)
+            assert len(outer_box.shape) >= 2 and outer_box.shape[-1] == 3
         
         cross_sxn_complex = cross_sxn[:,0]+1j*cross_sxn[:,1]
         outer_box_complex = outer_box[:,0]+1j*outer_box[:,1]
@@ -186,12 +202,26 @@ class PyfrmCartesianGridSamplingPts(PyfrmSamplingPts):
         self._pts = np.stack(np.meshgrid(*[np.linspace(m,M,n) for m,M,n in zip(mins, maxes, npts)], indexing='ij'),-1)
         super().__init__()
 
+
+def get_all_subclasses(cls):
+    subclass_list = []
+
+    def recurse(klass):
+        for subclass in klass.__subclasses__():
+            subclass_list.append(subclass)
+            recurse(subclass)
+
+    recurse(cls)
+
+    return set(subclass_list)
+
+
 def get_samplingptshandler(name, **kwargs):
 
     try:
-        samplingpts_class = next(filter(lambda x: x.name == name, BaseSamplingPts.__subclasses__()))
+        samplingpts_class = next(filter(lambda x: x.name == name, get_all_subclasses(BaseSamplingPts)))
     except:
-        opts = [x.name for x in BaseSamplingPts.__subclasses__()]
+        opts = [x.name for x in get_all_subclasses(BaseSamplingPts)]
         raise(RuntimeError(f'Could not find sampling pts handler {name} - available options {opts}'))
 
     sampler = samplingpts_class(**kwargs)
@@ -200,9 +230,9 @@ def get_samplingptshandler(name, **kwargs):
 
 if __name__ == '__main__':
     test_pyfrm = '/fr3D/pp_test2/shape_2091/shape_2091.pyfrm'
-    z = PyfrmAnnulusGridSamplingPts(test_pyfrm, 'obstacle', [64,256,64])
-    import pdb; pdb.set_trace()
-    zz = 1
+    # z = PyfrmAnnulusGridSamplingPts(test_pyfrm, 'obstacle', [64,256,64])
+    # import pdb; pdb.set_trace()
+    # zz = 1
     # print(PyfrmSamplingPts._petype_fnmap)
     # print(PyfrmSamplingPts._vertex_renumbering)
     # vert = PyfrmSamplingPts._extract_physical_grp_vertices(test_pyfrm, 'obstacle')

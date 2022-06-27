@@ -2,6 +2,8 @@ import os
 import numpy as np
 import h5py
 
+from tqdm import tqdm
+
 from pyfr.plugins.sampler import SamplerPlugin
 from pyfr.readers.native import NativeReader
 from pyfr.inifile import Inifile
@@ -37,7 +39,7 @@ def _convert_sampling_pts_to_pyfr_format(x):
 
     return str([tuple(z) for z in x])
 
-def process_case(pyfrm_path, pyfrs_paths, sampling_pts, config_path=None):
+def process_case(pyfrm_path, pyfrs_paths, sampling_pts, config_path=None, verbose=False):
     # Work around issues with UCX-derived MPI libraries
     os.environ['UCX_MEMTYPE_CACHE'] = 'n'
     
@@ -57,7 +59,7 @@ def process_case(pyfrm_path, pyfrs_paths, sampling_pts, config_path=None):
         cfg = Inifile.load(config_path)
     else:
         cfg = Inifile(soln['config'])
-
+    
     cfg.set('soln-plugin-samplerwrapper', 'samp-pts', _convert_sampling_pts_to_pyfr_format(sampling_pts))
     cfg.set('soln-plugin-samplerwrapper', 'format', 'primitive')
     cfg.set('soln-plugin-samplerwrapper', 'file', '/dev/null')
@@ -85,7 +87,8 @@ def process_case(pyfrm_path, pyfrs_paths, sampling_pts, config_path=None):
 
     #Interpolate
     results = []
-    for f in pyfrs_paths:
+    for f in (pbar := tqdm(pyfrs_paths)):
+        pbar.set_description(f'Processing {pyfrm_path} - {f}')
         results.append(solver.completed_step_handlers[-1](f))
 
     results = np.stack(results,0)
