@@ -71,6 +71,7 @@ class PostprocessingManager:
         self.soln_times_indices = {}
         for case_name, meshf, pyfrs_files in files_list:
             self.read_queue.put((case_name, meshf, pyfrs_files))
+        self._nworkitems = self.read_queue.qsize()
 
     @staticmethod
     def _separate_sampling_results(x: np.ndarray, groups_info: dict, axis=1):
@@ -120,8 +121,12 @@ class PostprocessingManager:
             
         return tuple(solns_and_meshes)
             
-    def run(self):
-        n_readers = max(mp.cpu_count(), self.read_queue.qsize())
+    def run(self, n_readers=None):
+        if n_readers is None:
+            n_readers = max(mp.cpu_count()-4, self.read_queue.qsize())
+        else:
+            assert isinstance(n_readers, int) and n_readers>0
+        
         self._nworkitems = self.read_queue.qsize()
         processes = [mp.Process(target=self.reader_process) for _ in range(n_readers)]
         writer_process = mp.Process(target=self.writer_process)
@@ -205,6 +210,7 @@ def main():
     parser.add_argument('-t', nargs=2, type=float, help='Time window. Provide 2 floats to mark tbegin and tend', default=(-np.inf,np.inf))
     parser.add_argument('--ignore', nargs='*', type=str, help='Cases (i.e. subdirectories) inside input_dir to ignore.', default=tuple())
     parser.add_argument('-d', type=str, help='Save datatype. float32 or float64.', default='float32')
+    parser.add_argument('-np', type=int, default=None, help='Number of reader processes')
 
     args = parser.parse_args()
 
@@ -212,9 +218,7 @@ def main():
 
     manager = PostprocessingManager(args.output_file, args.input_dir, sampling_conf, ignore_list=args.ignore, save_dtype=args.d, time_window=args.t)
     
-    manager.reader_process()
-    
-    manager.run()
+    manager.run(n_readers=args.np)
 
 if __name__ == '__main__':
     main()

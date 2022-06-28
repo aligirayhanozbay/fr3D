@@ -16,13 +16,20 @@ from pyfr.mpiutil import get_comm_rank_root
 class SamplerWrapper(SamplerPlugin):
     name = 'samplerwrapper'
 
+    def _refine_pts(self, intg, elepts):
+        self._element_type_order = [x.basis.name for x in intg.system.ele_map.values()]
+        return super()._refine_pts(intg, elepts)
+
     def __call__(self, pyfrs_path):
         # MPI info
         comm, rank, root = get_comm_rank_root()
 
         # Get the solution matrices
         solns_file = h5py.File(pyfrs_path, 'r')
-        solns = [np.array(solns_file[x]) for x in filter(lambda x: solns_file[x].shape != tuple(), solns_file.keys())]
+        solns = []
+        for eletype in self._element_type_order:
+            key = [x for x in solns_file.keys() if eletype in x][0]
+            solns.append(np.array(solns_file[key]))
 
         # Perform the sampling and interpolation
         samples = [op @ solns[et][:, :, ei] for et, ei, _, op in self._ourpts]
@@ -77,7 +84,8 @@ def process_case(pyfrm_path, pyfrs_paths, sampling_pts, config_path=None, verbos
     register_finalize_handler()
 
     # Create a backend
-    backend = get_backend('openmp', cfg)
+    # backend has to be not openmp for now, due to a segfault in libxsmm
+    backend = get_backend('cuda', cfg)
 
     # Get the mapping from physical ranks to MPI ranks
     rallocs = get_rank_allocation(mesh, cfg)
@@ -87,8 +95,9 @@ def process_case(pyfrm_path, pyfrs_paths, sampling_pts, config_path=None, verbos
 
     #Interpolate
     results = []
-    for f in (pbar := tqdm(pyfrs_paths)):
-        pbar.set_description(f'Processing {pyfrm_path} - {f}')
+    for f in (pbar := (tqdm(pyfrs_paths) if verbose else pyfrs_paths)):
+        if verbose:
+            pbar.set_description(f'Processing {pyfrm_path} - {f}')
         results.append(solver.completed_step_handlers[-1](f))
 
     results = np.stack(results,0)
