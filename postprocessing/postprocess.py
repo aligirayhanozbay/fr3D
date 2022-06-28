@@ -171,6 +171,8 @@ class PostprocessingManager:
             sampling_pts = self._separate_sampling_results(sampling_pts, groups_info, axis=0)
            
             self.write_queue.put((case_name, sampling_result, sampling_pts))
+
+            del sampling_pts, sampling_result
         return
 
     def writer_process(self):
@@ -189,6 +191,8 @@ class PostprocessingManager:
                         print(f'Writing {case_name} {sampling_result[sampling_grp].shape} {sampling_pts[sampling_grp].shape}')
                     sg.create_dataset(sampling_grp, data=sampling_result[sampling_grp], dtype=self.save_dtype)
                     sg.create_dataset(f'{sampling_grp}_coords', data=sampling_pts[sampling_grp], dtype=self.save_dtype)
+
+                del sampling_result, sampling_pts
 
                 if self.verbose:
                     print(f'Wrote {case_name}')

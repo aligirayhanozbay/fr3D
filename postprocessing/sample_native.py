@@ -102,6 +102,8 @@ def process_case(pyfrm_path, pyfrs_paths, sampling_pts, config_path=None, verbos
 
     results = np.stack(results,0)
 
+    del solver
+
     return results
 
         
