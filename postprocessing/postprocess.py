@@ -52,7 +52,7 @@ class PostprocessingManager:
                  output_path: str,
                  dataset_dir: str,
                  sampling_pt_groups: dict,
-                 ignore_list: tuple[str] = tuple(),
+                 ignore_list: tuple = tuple(),
                  time_window = (-np.inf,np.inf),
                  save_dtype = 'float32'
                  ):

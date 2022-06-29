@@ -1,13 +1,24 @@
-FROM tensorflow/tensorflow:2.9.1-gpu-jupyter
+FROM debian:bookworm
 
 SHELL ["/bin/bash", "-c"]
 ENV DEBIAN_FRONTEND=noninteractive
 
-RUN apt update && apt install --no-install-recommends -y gfortran git metis libmetis-dev curl ca-certificates ssh make \
+RUN apt update && apt install --no-install-recommends -y ca-certificates wget gnupg
+RUN apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/debian11/x86_64/3bf863cc.pub
+RUN apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/machine-learning/repos/ubuntu2004/x86_64/7fa2af80.pub
+
+RUN echo "deb https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64 /" > /etc/apt/sources.list.d/cuda.list
+RUN echo "deb https://developer.download.nvidia.com/compute/machine-learning/repos/ubuntu2004/x86_64 /" > /etc/apt/sources.list.d/tensorRT.list
+
+RUN apt update && apt install --no-install-recommends -y gfortran git metis libmetis-dev ssh make libxsmm-dev \
 							python3-pip python3-setuptools gmsh python3-gmsh python3-tqdm \
 							python3-sklearn python3-matplotlib libopenmpi-dev openmpi-bin \
-							cuda-nvrtc-dev-11-2 libcublas-dev-11-2
+							python3-mpi4py python3-h5py python3-dev \
+							cuda-toolkit-11-2 libcudnn8=8.1.0.77-1+cuda11.2 libcufft-dev-11-2 \
+							libcurand-dev-11-2 libcublas-dev-11-2 libcusolver-dev-11-2 \
+							libcusparse-dev-11-2 libnvinfer8 libnvinfer-plugin8 \
+							cuda-nvrtc-dev-11-2							
 
-RUN pip3 install pygmsh pyfr==1.13.0 tensorflow-io==0.26.0
+RUN pip3 install pygmsh pyfr==1.14.0 tensorflow-io==0.26.0 tensorflow==2.9.1
 
 RUN cd / && git clone https://github.com/aligirayhanozbay/pydscpack/ && cd /pydscpack && pip3 install --user -e .
