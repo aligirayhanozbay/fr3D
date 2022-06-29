@@ -1,15 +1,13 @@
-FROM ubuntu:jammy
+FROM tensorflow/tensorflow:2.9.1-gpu-jupyter
 
 SHELL ["/bin/bash", "-c"]
 ENV DEBIAN_FRONTEND=noninteractive
 
-RUN apt update && apt install --no-install-recommends -y gfortran git libmetis-dev curl libglu1-mesa ca-certificates libarchive-dev libxcursor1 libgl1-mesa-glx ssh
+RUN apt update && apt install --no-install-recommends -y gfortran git metis libmetis-dev curl ca-certificates ssh make \
+							python3-pip python3-setuptools gmsh python3-gmsh python3-tqdm \
+							python3-sklearn python3-matplotlib libopenmpi-dev openmpi-bin \
+							cuda-nvrtc-dev-11-2 libcublas-dev-11-2
 
-RUN curl -O https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh && chmod +x Miniconda3-latest-Linux-x86_64.sh && ./Miniconda3-latest-Linux-x86_64.sh -b && eval "$(/root/miniconda3/bin/conda shell.bash hook)" && conda init
-ENV PATH=/root/miniconda3/bin:$PATH
-RUN conda install -n base conda-forge::mamba
-RUN mamba install -y -c conda-forge cudatoolkit=11.2 tensorflow=2.6.2 openmpi openmpi-mpicxx gxx_linux-64 gmsh python-gmsh tqdm scikit-learn make matplotlib paraview libxsmm
-RUN pip3 install pygmsh pyfr==1.14.0
+RUN pip3 install pygmsh pyfr==1.13.0 tensorflow-io==0.26.0
 
-RUN cd / && git clone https://github.com/aligirayhanozbay/pydscpack/ && cd /pydscpack && pip3 install -e .
-ENV OMPI_MCA_opal_cuda_support=true
+RUN cd / && git clone https://github.com/aligirayhanozbay/pydscpack/ && cd /pydscpack && pip3 install --user -e .
