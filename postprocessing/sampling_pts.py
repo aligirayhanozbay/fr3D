@@ -57,7 +57,6 @@ def _vertex_renumbering_filter_nodemap(x):
     return out
         
 class PyfrmSamplingPts(BaseSamplingPts):
-    #yani yukaridaki ornege bakacak olursak, 188 nolu elemanin 2 nolu yuzu BC uzerinde. mapping'e bakiyorum, _petype['hex'][2] = [1,2,5,6]. 1,2,5,6'yi yukarida koydugun array'e gore 1,3,5,7 yapiyorum sonra spt_hex_p0'a bakiyorum. kisacasi mesh['spt_hex_p0'][<1,3,5 ve 7>, 188,:] bana vertex koordinatlarini veriyor.
     name='pyfrm-base'
     _petype_fnmap = GmshReader._petype_fnmap
     _vertex_renumbering = _vertex_renumbering_filter_nodemap(GmshReader._nodemaps)
@@ -127,7 +126,8 @@ class PyfrmRelativeSamplingPts(PyfrmSamplingPts):
             ptsreader = LiteralSamplingPts(ptsreader)
         else:
             assert isinstance(ptsreader, BaseSamplingPts)
-        read_pts = ptsreader.pts
+        read_pts_orig_shape = ptsreader.pts.shape
+        read_pts = ptsreader.pts.reshape(-1,3)
 
         vertices = self._extract_physical_grp_vertices(pyfrm, physgrp, extrusion_dim=None)
         pts_of_interest = {
@@ -138,6 +138,7 @@ class PyfrmRelativeSamplingPts(PyfrmSamplingPts):
 
         for axis,mode in enumerate(rel_to):
             read_pts[:,axis] += pts_of_interest[mode][axis]
+        read_pts = read_pts.reshape(*read_pts_orig_shape)
 
         self._pts = read_pts
 
@@ -152,8 +153,6 @@ class PyfrmAnnulusGridSamplingPts(PyfrmSamplingPts):
     def __init__(self, pyfrm, physgrp, npts, extrusion_dim=2, outer_box=None):
         cross_sxn, extr_dim_coords  = self._extract_physical_grp_vertices(pyfrm, physgrp, extrusion_dim=extrusion_dim)
         extr_dim_min, extr_dim_max = np.min(extr_dim_coords), np.max(extr_dim_coords)
-        # extr_dim_coords = np.ones([npts[extrusion_dim], 3], dtype=extr_dim_coords)
-        # extr_dim_coords[:,extrusion_dim] = np.linspace(np.min(extr_dim_coords), np.max(extr_dim_coords), npts[extrusion_dim])
 
         if outer_box is None:
             domain_mins, domain_maxes = self._extract_domain_extrema(pyfrm)
@@ -230,13 +229,20 @@ def get_samplingptshandler(name, **kwargs):
 
 if __name__ == '__main__':
     test_pyfrm = '/fr3D/pp_test2/shape_2091/shape_2091.pyfrm'
-    # z = PyfrmAnnulusGridSamplingPts(test_pyfrm, 'obstacle', [64,256,64])
-    # import pdb; pdb.set_trace()
-    # zz = 1
-    # print(PyfrmSamplingPts._petype_fnmap)
-    # print(PyfrmSamplingPts._vertex_renumbering)
-    # vert = PyfrmSamplingPts._extract_physical_grp_vertices(test_pyfrm, 'obstacle')
-    # extr = PyfrmSamplingPts._extract_domain_extrema(test_pyfrm)
-    # import pdb; pdb.set_trace()
-    # z=1
+    args = {
+                "physgrp": "obstacle",
+                "rel_to": ["maximum", "centroid", "centroid"],
+                "ptsreader": {
+                        "name": "grid",
+                        "linspace_args": [[0.5,2.5,5], [-2.0,2.0,5], [-4.0,4.0,5]]
+                }
+    }
+    z = PyfrmRelativeSamplingPts(test_pyfrm, **args)
+    args = {"physgrp": "obstacle",
+            "npts": [64,64,64],
+            "extrusion_dim": 2}
+    zz = PyfrmAnnulusGridSamplingPts(test_pyfrm, **args)
+
+    import pdb; pdb.set_trace()
+    
         
