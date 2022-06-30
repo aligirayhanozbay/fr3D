@@ -22,7 +22,6 @@ def resolve_path(path):
 
 class PostprocessingManager:
     time_window_match = re.compile('\d*[.,]?\d*.pyfrs$')
-    verbose=True
     __doc__ ='''Inputs:
         -output_path: string. path to the outputted hdf5 file.
         -dataset_dir: string. path to the directory containing the solutions. the directory structure must be as follows:
@@ -54,9 +53,11 @@ class PostprocessingManager:
                  sampling_pt_groups: dict,
                  ignore_list: tuple = tuple(),
                  time_window = (-np.inf,np.inf),
-                 save_dtype = 'float32'
+                 save_dtype = 'float32',
+                 verbose = 0
                  ):
-        
+
+        self.verbose = int(verbose)
         self.output_path = resolve_path(output_path)
         self.save_dtype = save_dtype
         self.ignore_list = ignore_list
@@ -146,7 +147,7 @@ class PostprocessingManager:
         while not self.read_queue.empty():
             case_name, meshf, pyfrsf = self.read_queue.get()
             
-            if self.verbose:
+            if self.verbose >= 1:
                 rem_work_items = self.read_queue.qsize()
                 print(f'Reading {case_name} ({self._nworkitems-rem_work_items}/{self._nworkitems})')
 
@@ -166,7 +167,7 @@ class PostprocessingManager:
             
             pyfrsf = sorted(pyfrsf, key = self._get_soln_time_from_filename)
            
-            sampling_result = process_case(meshf, pyfrsf, sampling_pts, verbose = self.verbose)
+            sampling_result = process_case(meshf, pyfrsf, sampling_pts, verbose = (self.verbose >= 2))
             sampling_result = self._separate_sampling_results(sampling_result, groups_info, axis=1)
             sampling_pts = self._separate_sampling_results(sampling_pts, groups_info, axis=0)
            
@@ -187,14 +188,14 @@ class PostprocessingManager:
                
                 sg = outf.create_group(case_name)
                 for sampling_grp in sampling_result:
-                    if self.verbose:
+                    if self.verbose >= 1:
                         print(f'Writing {case_name} {sampling_result[sampling_grp].shape} {sampling_pts[sampling_grp].shape}')
                     sg.create_dataset(sampling_grp, data=sampling_result[sampling_grp], dtype=self.save_dtype)
                     sg.create_dataset(f'{sampling_grp}_coords', data=sampling_pts[sampling_grp], dtype=self.save_dtype)
 
                 del sampling_result, sampling_pts
 
-                if self.verbose:
+                if self.verbose >= 1:
                     print(f'Wrote {case_name}')
 
 def main():
@@ -214,13 +215,14 @@ def main():
     parser.add_argument('-t', nargs=2, type=float, help='Time window. Provide 2 floats to mark tbegin and tend', default=(-np.inf,np.inf))
     parser.add_argument('--ignore', nargs='*', type=str, help='Cases (i.e. subdirectories) inside input_dir to ignore.', default=tuple())
     parser.add_argument('-d', type=str, help='Save datatype. float32 or float64.', default='float32')
+    parser.add_argument('-v', type=int, help='Output verbosity - 0, 1 or 2.', default=0)
     parser.add_argument('-np', type=int, default=None, help='Number of reader processes')
 
     args = parser.parse_args()
 
     sampling_conf = json.load(open(args.samplingconfig,'r'))
 
-    manager = PostprocessingManager(args.output_file, args.input_dir, sampling_conf, ignore_list=args.ignore, save_dtype=args.d, time_window=args.t)
+    manager = PostprocessingManager(args.output_file, args.input_dir, sampling_conf, ignore_list=args.ignore, save_dtype=args.d, time_window=args.t, verbose=args.v)
     
     manager.run(n_readers=args.np)
 
