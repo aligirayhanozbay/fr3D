@@ -10,74 +10,7 @@ def merge_datasets(datasets: list):
     ds = datasets[0]
     for d in datasets[1:]:
         ds = ds.concatenate(d)
-    return ds
-
-
-
-
-def keep_vars(ds: tf.data.Dataset, keep_vars):
-    if isinstance(keep_vars, list) or isinstance(keep_vars, tuple):
-            keep_vars = {'axis': -1, 'indices': [reverse_saved_var_order[v] if isinstance(v, str) else v for v in keep_vars]}
-    return ds.map(lambda x: tf.gather(x, **keep_vars))
-
-
-def reshape_data(ds: tf.data.Dataset, reshape: tuple):
-    reshape = [len(saved_var_order) if v=='N_VARS' else v for v in reshape]
-    return ds.map(lambda x: tf.reshape(x, reshape))
-
-
-def normalize_data(ds: tf.data.Dataset, normalization_spec: dict):
-    normalization_spec['batch_mode']=False
-    normalizer = get_normalization(**normalization_spec)
-    return ds.map(normalizer)
-
-def apply_transformations(ds: tf.data.Dataset, transformations: dict):
-
-    transformation_map = {
-        'normalize': normalize_data,
-        'reshape': reshape_data,
-        'keep_vars': keep_vars
-    }
-    
-    for transformation_type, transformation_config in zip(transformations.keys(), transformations.values()):
-        ds = transformation_map[transformation_type](ds, transformation_config)
-
-    return ds
-        
-
-def loadIODataset(filepath, configs, concat_axis: int = -1, transformations: dict = None):
-    if isinstance(configs, dict):
-        configs = [configs]
-    elif isinstance(configs, str):
-        configs = [{"field": configs}]
-        
-    if len(configs) == 1:
-        config = copy.deepcopy(configs[0])
-        init_options = config.get('init_options', {})
-        
-        with h5py.File(filepath, 'r') as f:
-            cases = list(f.keys())
-
-        ds = merge_datasets([tfio.IODataset.from_hdf5(filepath, f'/{case}/{config["field"]}', **init_options) for case in cases])
-
-    else:
-        datasets = tuple([loadIODataset(filepath, **cfg) for cfg in configs])
-        ds = tf.data.Dataset.zip(datasets).map(lambda *x: tf.concat(x, axis=concat_axis))
-
-    if transformations is not None:
-        ds = apply_transformations(ds, transformations)
-
-    return ds
-
-def Dataset(filepath, configs: tuple):
-    datasets = []
-    for cfgs in configs:
-        datasets.append(loadIODataset(filepath, **cfgs))
-
-    ds = tf.data.Dataset.zip(tuple(datasets))
-        
-    return ds
-    
+    return ds    
 
 class DatasetPipelineNode:
     nodetype='base'
@@ -158,7 +91,7 @@ class TakeElementNode(DatasetPipelineNode):
         super().__init__(**kwargs)
         
     def _transform(self, ds):
-        return ds.map(lambda x: x[self.take_idx])
+        return ds.map(lambda *x: x[self.take_idx])
 
 class ReshapeNode(DatasetPipelineNode):
     nodetype='reshape'
@@ -168,7 +101,7 @@ class ReshapeNode(DatasetPipelineNode):
         super().__init__(**kwargs)
 
     def _transform(self, ds):
-        return ds.map(lambda x: tf.reshape(x, new_shape))
+        return ds.map(lambda x: tf.reshape(x, self.new_shape))
 
 class ZipNode(DatasetPipelineNode):
     nodetype='zip'
@@ -196,7 +129,7 @@ class ConcatenateNode(DatasetPipelineNode):
         super().__init__(**kwargs)
 
     def _transform(self, ds):
-        return ds.map(lambda x: tf.concat(x, axis=self.axis))
+        return ds.map(lambda *x: tf.concat(x, axis=self.axis))
 
 
 class DatasetPipelineBuilder:
@@ -278,7 +211,7 @@ if __name__ == '__main__':
             "inputs": ["zip_pressure"],
             "normalization_spec": {
                 "method": "zscore",
-                "axis": -2,
+                "axis": [-2,-3,-4],
                 "return_parameters": True
             }
         },
@@ -288,7 +221,7 @@ if __name__ == '__main__':
             "inputs": ["zip_velocity"],
             "normalization_spec": {
                 "method": "zscore",
-                "axis": -2,
+                "axis": [-2,-3,-4],
                 "return_parameters": True
             }
         },
@@ -330,7 +263,7 @@ if __name__ == '__main__':
         {
             "nodetype": "keep_vars",
             "identifier": "output",
-            "inputs": ["zip_output"],
+            "inputs": ["concatenate_output"],
             "vars_to_keep": ["p"]
         },
         {
@@ -348,11 +281,11 @@ if __name__ == '__main__':
         {
             "nodetype": "zip",
             "identifier": "zip_input",
-            "inputs": ["pressure_input", "velocity_input"],
+            "inputs": ["reshape_pressure_input", "reshape_velocity_input"],
         },
         {
             "nodetype": "concatenate",
-            "identifier": "concatenate_input",
+            "identifier": "input",
             "inputs": ["zip_input"],
             "axis": -1
         }

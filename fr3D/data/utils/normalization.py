@@ -19,8 +19,6 @@ class BaseNormalization:
 
     @tf.function
     def __call__(self, x, y):
-        print(x.shape)
-        print(y.shape)
         if self.source == 'input':
             norm_params_x = self._get_parameters(x)
             norm_params_y = norm_params_x
@@ -36,8 +34,8 @@ class BaseNormalization:
             yhat = tf.map_fn(self._apply, elems=(y, norm_params_y), fn_output_signature=y.dtype, parallel_iterations=10)
         else:
             xhat = self._apply((x, norm_params_x))
-            yhat = self._apply((x, norm_params_y))
-
+            yhat = self._apply((y, norm_params_y))
+            
         if self.return_parameters:
             return xhat, yhat, norm_params_x, norm_params_y
         else:
