@@ -9,36 +9,50 @@ class BaseNormalization:
         self.source=source
         self.return_parameters=return_parameters
         self.batch_mode = batch_mode
+        self._call_func = self._make_call_function()
 
     def _get_parameters(self, x):
         raise(NotImplementedError())
 
     def _apply(self, x):
         raise(NotImplementedError())
-    
-    @tf.function
-    def __call__(self, x, y):
+
+    def _make_call_function(self):
         if self.source == 'input':
-            norm_params_x = self._get_parameters(x)
-            norm_params_y = norm_params_x
+            get_parameters_wrap = lambda x, y: (self._get_parameters(x), self._get_parameters(x))
         elif self.source == 'target':
-            norm_params_y = self._get_parameters(y)
-            norm_params_x = norm_params_y
-        elif self.source == 'both':
-            norm_params_x = self._get_parameters(x)
-            norm_params_y = self._get_parameters(y)
+            get_parameters_wrap = lambda x, y: (self._get_parameters(y), self._get_parameters(y))
+        elif self.source == 'individual':
+            get_parameters_wrap = lambda x, y: (self._get_parameters(x), self._get_parameters(y))
 
         if self.batch_mode:
-            xhat = tf.map_fn(self._apply, elems=(x, norm_params_x), fn_output_signature=x.dtype, parallel_iterations=10)
-            yhat = tf.map_fn(self._apply, elems=(y, norm_params_y), fn_output_signature=y.dtype, parallel_iterations=10)
+            apply_wrap = lambda x, norm_params: tf.map_fn(self._apply, elems=(x, norm_params), fn_output_signature=x.dtype, parallel_iterations=10)
         else:
-            xhat = self._apply((x, norm_params_x))
-            yhat = self._apply((y, norm_params_y))
+            apply_wrap = lambda x, norm_params: self._apply((x, norm_params))
 
         if self.return_parameters:
-            return xhat, yhat, norm_params_x, norm_params_y
+            pack_parameters = lambda *x: x
         else:
-            return xhat, yhat
+            pack_parameters = lambda *x: (x[0], x[1])
+
+        @tf.function
+        def call(sample):
+            x,y = sample
+            norm_params_x, norm_params_y = get_parameters_wrap(x, y)
+
+            xhat = apply_wrap(x, norm_params_x)
+            yhat = apply_wrap(y, norm_params_y)
+
+            return pack_parameters(xhat, yhat, norm_params_x, norm_params_y)
+
+        return call
+
+    
+    def __call__(self, x, y):
+        return self._call_func(x,y)
+
+    def undo(self, x, norm_params):
+        raise(NotImplementedError())
         
 class MeanCenterNormalization(BaseNormalization):
     name='meancenter'
@@ -48,6 +62,9 @@ class MeanCenterNormalization(BaseNormalization):
     def _apply(self, x):
         x, norm_params = x
         return x-norm_params
+
+    def undo(self, xhat, norm_params):
+        return xhat+norm_params
 
 class MinMaxNormalization(BaseNormalization):
     name='minmax'
@@ -61,6 +78,11 @@ class MinMaxNormalization(BaseNormalization):
         xmin = norm_params[...,0]
         xmax = norm_params[...,1]
         return (x-xmin)/(xmax - xmin)
+
+    def undo(self, xhat, norm_params):
+        xmin = norm_params[...,0]
+        xmax = norm_params[...,1]
+        return xhat*(xmax-xmin)+xmin
     
 class ZScoreNormalization(BaseNormalization):
     name='zscore'
@@ -77,6 +99,11 @@ class ZScoreNormalization(BaseNormalization):
         xhat = (x - mu)/std
         return xhat
 
+    def undo(self, xhat, norm_params):
+        mu = norm_params[...,0]
+        std = norm_params[...,1]
+        return xhat*std+mu
+
 class UnitVectorNormalization(BaseNormalization):
     name='unitvector'
     def __init__(self, ord='euclidean', **kwargs):
@@ -90,13 +117,16 @@ class UnitVectorNormalization(BaseNormalization):
         x, norm_params = x
         return x/norm_params
 
-def get_normalization(name, **kwargs):
+    def undo(self, xhat, norm_params):
+        return x*norm_params
+
+def get_normalization(method, **kwargs):
 
     try:
-        normalization_class = next(filter(lambda x: x.name == name, get_all_subclasses(BaseNormalization)))
+        normalization_class = next(filter(lambda x: x.name == method, get_all_subclasses(BaseNormalization)))
     except:
         opts = [x.name for x in get_all_subclasses(BaseNormalization)]
-        raise(RuntimeError(f'Could not find normalization type {name} - available options {opts}'))
+        raise(RuntimeError(f'Could not find normalization type {method} - available options {opts}'))
 
     normalizer = normalization_class(**kwargs)
 
@@ -122,6 +152,5 @@ if __name__ == '__main__':
     
     m = {n:normalizers[n](inp, out) for n in normalizers}
     print({n:[x.shape for x in k] for n,k in zip(m.keys(), m.values())})
-
     
     
