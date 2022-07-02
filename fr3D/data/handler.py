@@ -115,7 +115,6 @@ class DatasetPipelineNode:
         except:
             opts = [x.nodetype for x in get_all_subclasses(cls)]
             raise(RuntimeError(f'Could not find dataset pipeline node type {nodetype} - available options {opts}'))
-
         pipeline_node = node_class(**kwargs)
         return pipeline_node
                     
@@ -184,12 +183,13 @@ class NormalizeNode(DatasetPipelineNode):
         normalization_spec = copy.deepcopy(normalization_spec)
         normalization_spec['batch_mode'] = False
         self.normalizer = get_normalization(**normalization_spec)
+        super().__init__(**kwargs)
 
     def _transform(self, ds):
         return ds.map(self.normalizer)
 
 class ConcatenateNode(DatasetPipelineNode):
-    nodetype='normalize'
+    nodetype='concatenate'
     n_inputnodes=1
     def __init__(self, axis=-1, **kwargs):
         self.axis=axis
@@ -214,6 +214,9 @@ class DatasetPipelineBuilder:
     
 
 if __name__ == '__main__':
+    tf.config.run_functions_eagerly(True)
+    tf.data.experimental.enable_debug_mode()
+
     
     fpath = '/fr3D/postprocessed/postprocessed_test.h5'
     node_configurations = [
@@ -227,19 +230,131 @@ if __name__ == '__main__':
             "nodetype": "HDF5IODataset",
             "identifier": "sensors-velocity",
             "filepath": fpath,
-            "field": "sensors-pressure"
+            "field": "sensors-velocity"
         },
         {
             "nodetype": "HDF5IODataset",
             "identifier": "full_field",
             "filepath": fpath,
-            "field": "sensors-pressure"
+            "field": "full_field"
         },
         {
             "nodetype": "keep_vars",
             "identifier": "sensors-pressure-keepvars",
             "vars_to_keep": ["p"],
             "inputs": ["sensors-pressure"]
+        },
+        {
+            "nodetype": "keep_vars",
+            "identifier": "sensors-velocity-keepvars",
+            "vars_to_keep": ["u", "v", "w"],
+            "inputs": ["sensors-velocity"]
+        },
+        {
+            "nodetype": "keep_vars",
+            "identifier": "full_field_pressure",
+            "vars_to_keep": ["p"],
+            "inputs": ["full_field"]
+        },
+        {
+            "nodetype": "keep_vars",
+            "identifier": "full_field_velocity",
+            "vars_to_keep": ["u", "v", "w"],
+            "inputs": ["full_field"]
+        },
+        {
+            "nodetype": "zip",
+            "identifier": "zip_pressure",
+            "inputs": ["sensors-pressure-keepvars", "full_field_pressure"]
+        },
+        {
+            "nodetype": "zip",
+            "identifier": "zip_velocity",
+            "inputs": ["sensors-velocity-keepvars", "full_field_velocity"]
+        },
+        {
+            "nodetype": "normalize",
+            "identifier": "normalize_pressure",
+            "inputs": ["zip_pressure"],
+            "normalization_spec": {
+                "method": "zscore",
+                "axis": -2,
+                "return_parameters": True
+            }
+        },
+        {
+            "nodetype": "normalize",
+            "identifier": "normalize_velocity",
+            "inputs": ["zip_velocity"],
+            "normalization_spec": {
+                "method": "zscore",
+                "axis": -2,
+                "return_parameters": True
+            }
+        },
+        {
+            "nodetype": "take",
+            "identifier": "pressure_input",
+            "take_idx": 0,
+            "inputs": ["normalize_pressure"]
+        },
+        {
+            "nodetype": "take",
+            "identifier": "pressure_output",
+            "take_idx": 1,
+            "inputs": ["normalize_pressure"]
+        },
+        {
+            "nodetype": "take",
+            "identifier": "velocity_input",
+            "take_idx": 0,
+            "inputs": ["normalize_velocity"]
+        },
+        {
+            "nodetype": "take",
+            "identifier": "velocity_output",
+            "take_idx": 1,
+            "inputs": ["normalize_velocity"]
+        },
+        {
+            "nodetype": "zip",
+            "identifier": "zip_output",
+            "inputs": ["pressure_output", "velocity_output"]
+        },
+        {
+            "nodetype": "concatenate",
+            "identifier": "concatenate_output",
+            "inputs": ["zip_output"],
+            "axis": -1
+        },
+        {
+            "nodetype": "keep_vars",
+            "identifier": "output",
+            "inputs": ["zip_output"],
+            "vars_to_keep": ["p"]
+        },
+        {
+            "nodetype": "reshape",
+            "identifier": "reshape_pressure_input",
+            "inputs": ["pressure_input"],
+            "new_shape": [-1]
+        },
+        {
+            "nodetype": "reshape",
+            "identifier": "reshape_velocity_input",
+            "inputs": ["velocity_input"],
+            "new_shape": [-1]
+        },
+        {
+            "nodetype": "zip",
+            "identifier": "zip_input",
+            "inputs": ["pressure_input", "velocity_input"],
+        },
+        {
+            "nodetype": "concatenate",
+            "identifier": "concatenate_input",
+            "inputs": ["zip_input"],
+            "axis": -1
         }
     ]
     dsp = DatasetPipelineBuilder(node_configurations)

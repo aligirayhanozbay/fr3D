@@ -9,7 +9,7 @@ class BaseNormalization:
         self.source=source
         self.return_parameters=return_parameters
         self.batch_mode = batch_mode
-        self._call_func = self._make_call_function()
+        # self._call_func = self._make_call_function()
 
     def _get_parameters(self, x):
         raise(NotImplementedError())
@@ -17,39 +17,31 @@ class BaseNormalization:
     def _apply(self, x):
         raise(NotImplementedError())
 
-    def _make_call_function(self):
+    @tf.function
+    def __call__(self, x, y):
+        print(x.shape)
+        print(y.shape)
         if self.source == 'input':
-            get_parameters_wrap = lambda x, y: (self._get_parameters(x), self._get_parameters(x))
+            norm_params_x = self._get_parameters(x)
+            norm_params_y = norm_params_x
         elif self.source == 'target':
-            get_parameters_wrap = lambda x, y: (self._get_parameters(y), self._get_parameters(y))
+            norm_params_y = self._get_parameters(y)
+            norm_params_x = norm_params_y
         elif self.source == 'individual':
-            get_parameters_wrap = lambda x, y: (self._get_parameters(x), self._get_parameters(y))
+            norm_params_x = self._get_parameters(x)
+            norm_params_y = self._get_parameters(y)
 
         if self.batch_mode:
-            apply_wrap = lambda x, norm_params: tf.map_fn(self._apply, elems=(x, norm_params), fn_output_signature=x.dtype, parallel_iterations=10)
+            xhat = tf.map_fn(self._apply, elems=(x, norm_params_x), fn_output_signature=x.dtype, parallel_iterations=10)
+            yhat = tf.map_fn(self._apply, elems=(y, norm_params_y), fn_output_signature=y.dtype, parallel_iterations=10)
         else:
-            apply_wrap = lambda x, norm_params: self._apply((x, norm_params))
+            xhat = self._apply((x, norm_params_x))
+            yhat = self._apply((x, norm_params_y))
 
         if self.return_parameters:
-            pack_parameters = lambda *x: x
+            return xhat, yhat, norm_params_x, norm_params_y
         else:
-            pack_parameters = lambda *x: (x[0], x[1])
-
-        @tf.function
-        def call(sample):
-            x,y = sample
-            norm_params_x, norm_params_y = get_parameters_wrap(x, y)
-
-            xhat = apply_wrap(x, norm_params_x)
-            yhat = apply_wrap(y, norm_params_y)
-
-            return pack_parameters(xhat, yhat, norm_params_x, norm_params_y)
-
-        return call
-
-    
-    def __call__(self, x, y):
-        return self._call_func(x,y)
+            return xhat, yhat
 
     def undo(self, x, norm_params):
         raise(NotImplementedError())
