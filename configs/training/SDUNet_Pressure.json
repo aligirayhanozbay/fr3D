@@ -2,7 +2,7 @@
     "model": {
 	"sd_config":{
 	    "normalization": "batchnorm",
-	    "hidden_layer_units": [64,64],
+	    "hidden_layer_units": [768,768],
 	    "hidden_layer_activations": ["leaky_relu", "leaky_relu"],
 	    "l2_regularization": 1e-3
 	},

@@ -16,6 +16,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('experiment_config', type=str)
 parser.add_argument('dataset_path', type=str)
 parser.add_argument('checkpoint_path', type=str)
+parser.add_argument('--load_weights', type=str, default=None)
 parser.add_argument('--shuffle_size', type=int, default=500)
 args = parser.parse_args()
 
@@ -60,4 +61,8 @@ with distribute_strategy.scope():
     model.summary()
     loss_fn = tf.keras.losses.get(config['training']['loss'])
     model.compile(loss=loss_fn, optimizer = tf.keras.optimizers.get(config['training']['optimizer']), metrics = config['training'].get('metrics', None))
+
+    if args.load_weights is not None:
+        model.load_weights(args.load_weights)
+    
     model.fit(train_dataset, epochs = config['training']['epochs'], callbacks = callbacks, validation_data = test_dataset, validation_steps = config['training'].get('validation_steps', None))
