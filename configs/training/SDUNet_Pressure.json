@@ -9,7 +9,7 @@
 	"unet_config": {
 	    "filters_root": 64,
 	    "layer_depth": 4,
-	    "activation": "prelu",
+	    "activation": "leaky_relu",
 	    "normalization": "batchnorm",
 	    "dropout_rate": 0.25
 	}
@@ -29,6 +29,7 @@
     },
     "dataset": {
 	"batch_size": 24,
+	"train_test_split": [0.80,0.20],
 	"training_node": "zip_input_output",
 	"node_configurations":[{
 		"nodetype": "HDF5IODataset",

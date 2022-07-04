@@ -74,14 +74,15 @@ class KeepVarsNode(DatasetPipelineNode):
 class HDF5IODatasetNode(DatasetPipelineNode):
     nodetype='HDF5IODataset'
     n_inputnodes=0
-    def __init__(self, filepath: str, field: str, identifier: str, nodes_in_graph: dict[str, DatasetPipelineNode]={}, **tfio_IODataset_options):
+    def __init__(self, filepath: str, field: str, identifier: str, nodes_in_graph: dict[str, DatasetPipelineNode]={}, groups: tuple[str] = None, **tfio_IODataset_options):
 
         super().__init__(identifier=identifier, inputs=tuple(), nodes_in_graph=nodes_in_graph)
-        
-        with h5py.File(filepath, 'r') as f:
-            cases = list(f.keys())
+
+        if groups is None:
+            with h5py.File(filepath, 'r') as f:
+                groups = list(f.keys())
             
-        self._dataset = merge_datasets([tfio.IODataset.from_hdf5(filepath, f'/{case}/{field}', **tfio_IODataset_options) for case in cases])
+        self._dataset = merge_datasets([tfio.IODataset.from_hdf5(filepath, f'/{group}/{field}', **tfio_IODataset_options) for group in groups])
     
 class TakeElementNode(DatasetPipelineNode):
     nodetype='take'
