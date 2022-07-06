@@ -17,7 +17,7 @@
     "training": {
 	"epochs": 200,
 	"validation_steps": 10,
-	"early_stopping": {"patience": 15, "verbose": true, "monitor": "loss"},
+	"early_stopping": {"patience": 15, "verbose": true, "monitor": "val_loss"},
 	"reduce_lr": {"patience": 7, "verbose": true, "min_lr": 1e-6, "monitor": "loss"},
 	"loss": "mse",
 	"metrics": ["mae"],
