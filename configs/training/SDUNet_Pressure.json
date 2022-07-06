@@ -19,7 +19,8 @@
 	"validation_steps": 10,
 	"early_stopping": {"patience": 15, "verbose": true, "monitor": "loss"},
 	"reduce_lr": {"patience": 7, "verbose": true, "min_lr": 1e-6, "monitor": "loss"},
-	"loss": "mae",
+	"loss": "mse",
+	"metrics": ["mae"],
 	"optimizer": {
 		"class_name": "adam",
 		"config": {
