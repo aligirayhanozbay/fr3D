@@ -1,0 +1,73 @@
+{
+    "model": {
+	"normalization": "layernorm",
+	"hidden_layer_units": [2048,2048],
+	"hidden_layer_activations": ["leaky_relu", "leaky_relu"],
+	"l2_regularization": 1e-3
+    },
+    "training": {
+	"epochs": 200,
+	"validation_steps": 10,
+	"early_stopping": {"patience": 15, "verbose": true, "monitor": "val_loss"},
+	"reduce_lr": {"patience": 7, "verbose": true, "min_lr": 1e-6, "monitor": "loss"},
+	"loss": "mse",
+	"metrics": ["mae"],
+	"optimizer": {
+		"class_name": "adam",
+		"config": {
+			"learning_rate": 1e-3
+		}
+	}
+    },
+    "dataset": {
+	"batch_size": 30,
+	"training_node": "concat_sensors",
+	"node_configurations": [
+	    {
+		"nodetype": "HDF5IODataset",
+		"identifier": "sensors-pressure",
+		"field": "sensors-pressure"
+            },
+            {
+		"nodetype": "HDF5IODataset",
+		"identifier": "sensors-velocity",
+		"field": "sensors-velocity"
+            },
+	    {
+		"nodetype": "keep_vars",
+		"identifier": "sensors-pressure-keepvars",
+		"vars_to_keep": ["p"],
+		"inputs": ["sensors-pressure"]
+            },
+	    {
+		"nodetype": "reshape",
+		"identifier": "sensors-pressure-reshape",
+		"inputs": ["sensors-pressure-keepvars"],
+		"new_shape": [-1]
+	    },
+            {
+		"nodetype": "keep_vars",
+		"identifier": "sensors-velocity-keepvars",
+		"vars_to_keep": ["u", "v", "w"],
+		"inputs": ["sensors-velocity"]
+            },
+	    {
+		"nodetype": "reshape",
+		"identifier": "sensors-velocity-reshape",
+		"inputs": ["sensors-velocity-keepvars"],
+		"new_shape": [-1]
+	    },
+	    {
+		"nodetype": "zip",
+		"identifier": "zip_sensors",
+		"inputs": ["sensors-pressure-reshape", "sensors-velocity-reshape"]
+	    },
+	    {
+		"nodetype": "concatenate",
+		"identifier": "concat_sensors",
+		"inputs": ["zip_sensors"],
+		"axis": -1
+	    }
+	]
+    }
+}
