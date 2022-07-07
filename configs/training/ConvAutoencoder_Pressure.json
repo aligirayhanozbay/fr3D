@@ -25,8 +25,8 @@
 	}
     },
     "dataset": {
-	"batch_size": 4,
-	"train_test_split": [0.50,0.50],
+	"batch_size": 30,
+	"train_test_split": [0.80,0.20],
 	"training_node": "pressure",
 	"node_configurations":[
 	    {
