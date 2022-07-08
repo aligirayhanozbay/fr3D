@@ -81,9 +81,9 @@ class HDF5IODatasetNode(DatasetPipelineNode):
         if groups is None:
             with h5py.File(filepath, 'r') as f:
                 groups = list(f.keys())
-            
-        self._dataset = merge_datasets([tfio.IODataset.from_hdf5(filepath, f'/{group}/{field}', **tfio_IODataset_options) for group in groups])
-    
+        
+        self._dataset = merge_datasets([tfio.IODataset.from_hdf5(filepath, f'/{group}/{field}' if field is not None else f'/{group}', **tfio_IODataset_options) for group in groups])
+           
 class TakeElementNode(DatasetPipelineNode):
     nodetype='take'
     n_inputnodes=1

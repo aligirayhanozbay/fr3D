@@ -103,7 +103,7 @@ class ConvAutoencoder(tf.keras.models.Model):
                  residual_connection: bool = True,
                  blocks_per_level: int = 4,
                  pool_size: int = 2,
-                 input_shape = None, ndims: int = 3, filters: int = None):
+                 input_shape = None, ndims: int = 3, filters: int = None, auto_build=True):
 
         super().__init__()
 
@@ -148,7 +148,8 @@ class ConvAutoencoder(tf.keras.models.Model):
 
         self.decoder = tf.keras.Model(encoder_out, decoder_out, name='decoder')
 
-        self.build(inp.shape)
+        if auto_build:
+            self.build(inp.shape)
 
     @staticmethod
     def create_encoder(*args, **kwargs):
@@ -178,8 +179,8 @@ class ConvAutoencoder(tf.keras.models.Model):
         self.decoder.load_weights(decoder_path)
     '''
     
-    def call(self, inp):
-        return self.decoder(self.encoder(inp))
+    def call(self, inp, training=None):
+        return self.decoder(self.encoder(inp, training=training), training=training)
                      
     def train_step(self, x):
         return super().train_step((x,x))

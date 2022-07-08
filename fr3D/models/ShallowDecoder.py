@@ -1,12 +1,14 @@
 import copy
 import tensorflow as tf
 
-def _get_original_shallow_decoder_layers(input_layer_shape, output_layer_size, hidden_layer_units = None, hidden_layer_activations = None, normalization = None, l2_regularization = 0.0):
+def _get_original_shallow_decoder_layers(input_layer_shape, output_layer_size, hidden_layer_units = None, hidden_layer_activations = None, normalization = None, l2_regularization = 0.0, final_activation=None):
     if hidden_layer_units is None:
         hidden_layer_units = [40,40]
     if hidden_layer_activations is None:
         hidden_layer_activations = ['relu' for _ in hidden_layer_units]
     else:
+        if isinstance(hidden_layer_activations, str):
+            hidden_layer_activations = [hidden_layer_activations for _ in hidden_layer_units]
         for k in range(len(hidden_layer_activations)):
             activation = hidden_layer_activations[k]
             if activation == 'leaky_relu':
@@ -23,10 +25,14 @@ def _get_original_shallow_decoder_layers(input_layer_shape, output_layer_size, h
         layers.append(tf.keras.layers.Dense(units, activation = activation, kernel_initializer='glorot_normal', kernel_regularizer = regularizer, bias_regularizer = regularizer))
         if normalization is not None:
             layers.append(normalization_map[normalization]())
-    layers.append(tf.keras.layers.Dense(output_layer_size))
+
+    if final_activation == 'leaky_relu':
+        final_activation = tf.nn.leaky_relu
+    regularizer = tf.keras.regularizers.L2(l2_regularization) if abs(l2_regularization) > 0.0 else None
+    layers.append(tf.keras.layers.Dense(output_layer_size, activation=final_activation, kernel_regularizer=regularizer, bias_regularizer=regularizer, kernel_initializer='glorot_normal'))
     return layers
 
-def original_shallow_decoder(input_layer_shape, output_layer_size, learning_rate=None, hidden_layer_units = None, hidden_layer_activations = None, normalization = None, l2_regularization = 0.0, loss_function = None, metrics = None):
+def original_shallow_decoder(input_layer_shape, output_layer_size, learning_rate=None, hidden_layer_units = None, hidden_layer_activations = None, normalization = None, l2_regularization = 0.0, loss_function = None, metrics = None, final_activation=None):
 
     layers = _get_original_shallow_decoder_layers(input_layer_shape, output_layer_size, hidden_layer_units, hidden_layer_activations, normalization, l2_regularization)
 

@@ -1,15 +1,18 @@
 {
     "model": {
 	"normalization": "layernorm",
-	"hidden_layer_units": [2048,2048],
-	"hidden_layer_activations": ["leaky_relu", "leaky_relu"],
-	"l2_regularization": 1e-3
+	"hidden_layer_units": [2048,2048,2048],
+	"hidden_layer_activations": "leaky_relu",
+	"final_activation": "leaky_relu",
+	"l2_regularization": 0.0
     },
-    "training": {
+    "training": {	
+	"batch_size": 100,
+	"train_test_split": [0.80,0.20],
 	"epochs": 200,
 	"validation_steps": 10,
-	"early_stopping": {"patience": 15, "verbose": true, "monitor": "val_loss"},
-	"reduce_lr": {"patience": 7, "verbose": true, "min_lr": 1e-6, "monitor": "loss"},
+	"early_stopping": {"patience": 40, "verbose": true, "monitor": "val_loss"},
+	"reduce_lr": {"patience": 10, "verbose": true, "min_lr": 1e-6, "monitor": "loss"},
 	"loss": "mse",
 	"metrics": ["mae"],
 	"optimizer": {
@@ -19,8 +22,7 @@
 		}
 	}
     },
-    "dataset": {
-	"batch_size": 30,
+    "sensor_dataset": {
 	"training_node": "concat_sensors",
 	"node_configurations": [
 	    {
@@ -67,6 +69,22 @@
 		"identifier": "concat_sensors",
 		"inputs": ["zip_sensors"],
 		"axis": -1
+	    }
+	]
+    },
+    "encoding_dataset": {
+	"training_node": "flatten",
+	"node_configurations": [
+	    {
+		"nodetype": "HDF5IODataset",
+		"identifier": "encodings",
+		"field": null
+	    },
+	    {
+		"nodetype": "reshape",
+		"identifier": "flatten",
+		"inputs": ["encodings"],
+		"new_shape": [-1]
 	    }
 	]
     }

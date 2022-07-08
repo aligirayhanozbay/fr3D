@@ -17,7 +17,7 @@ def hdf5_train_test_split(filepath: str, proportions: tuple[float], shuffle=True
         np.random.shuffle(cases)
 
     items_per_chunk = proportions*cases.shape[0]
-    chunk_indices = [0] + [int(i) for i in np.cumsum(items_per_chunk[:-1])] + [cases.shape[0]-1]
+    chunk_indices = [0] + [int(i) for i in np.cumsum(items_per_chunk[:-1])] + [cases.shape[0]]
 
     chunks = []
     for start_idx, end_idx in zip(chunk_indices[:-1], chunk_indices[1:]):

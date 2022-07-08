@@ -4,7 +4,7 @@ import tensorflow as tf
 import numpy as np
 
 from .utils import modify_node_types, prepare_dataset_for_training
-from ..models.ConvAutoencoder import ConvAutoencoder
+from ..models import ConvAutoencoder, ConvVAE
 from ..data import DatasetPipelineBuilder
 from ..data.utils import hdf5_train_test_split
 
@@ -18,6 +18,7 @@ parser.add_argument('dataset_path', type=str)
 parser.add_argument('checkpoint_path', type=str)
 parser.add_argument('--load_weights', type=str, default=None)
 parser.add_argument('--shuffle_size', type=int, default=500)
+parser.add_argument('--vae', action='store_true')
 args = parser.parse_args()
 
 config = json.load(open(args.experiment_config,'r'))
@@ -55,7 +56,10 @@ if 'early_stopping' in config['training']:
 
 distribute_strategy =  tf.distribute.MirroredStrategy()
 with distribute_strategy.scope():
-    model = ConvAutoencoder(input_shape=input_shape, **config['model'])
+    if args.vae:
+        model = ConvVAE(input_shape=input_shape, **config['model'])
+    else:
+        model = ConvAutoencoder(input_shape=input_shape, **config['model'])
     model.summary()
     loss_fn = tf.keras.losses.get(config['training']['loss'])
     model.compile(loss=loss_fn, optimizer = tf.keras.optimizers.get(config['training']['optimizer']), metrics = config['training'].get('metrics', None))
