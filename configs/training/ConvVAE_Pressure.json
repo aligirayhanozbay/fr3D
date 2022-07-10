@@ -1,21 +1,21 @@
 {
     "model": {
-	"levels": 5,
-	"base_filters": 16,
+	"levels": 4,
+	"base_filters": 32,
 	"kernel_size": 3,
 	"activation": "leaky_relu",
 	"normalization": "batchnorm",
 	"pre_activation": true,
 	"residual_connection": true,
-	"blocks_per_level": 3,
-	"pool_size": 2,
-	"bottleneck_size": 8192
+	"blocks_per_level": 4,
+	"pool_size": 2
     },
     "training": {
 	"epochs": 200,
 	"validation_steps": 10,
-	"early_stopping": {"patience": 15, "verbose": true, "monitor": "val_loss"},
+	"early_stopping": {"patience": 15, "verbose": true, "monitor": "loss"},
 	"reduce_lr": {"patience": 7, "verbose": true, "min_lr": 1e-6, "monitor": "loss"},
+	"model_checkpoint": {"save_best_only": true, "monitor": "loss"},
 	"loss": "mse",
 	"metrics": ["mae", "mse"],
 	"optimizer": {

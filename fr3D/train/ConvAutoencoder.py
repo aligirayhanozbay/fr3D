@@ -48,7 +48,7 @@ input_shape = dummy_input.shape[1:]
 del dummy_input
 
 #create model and train
-callbacks = [tf.keras.callbacks.ModelCheckpoint(args.checkpoint_path, save_best_only=True, save_weights_only=True)]
+callbacks = [tf.keras.callbacks.ModelCheckpoint(args.checkpoint_path, save_weights_only=True, **config['training']['model_checkpoint'])]
 if 'reduce_lr' in config['training']:
     callbacks.append(tf.keras.callbacks.ReduceLROnPlateau(**config['training']['reduce_lr']))
 if 'early_stopping' in config['training']:
@@ -66,5 +66,5 @@ with distribute_strategy.scope():
 
     if args.load_weights is not None:
         model.load_weights(args.load_weights)
-    
+
     model.fit(train_dataset, epochs = config['training']['epochs'], callbacks = callbacks, validation_data = test_dataset, validation_steps = config['training'].get('validation_steps', None))

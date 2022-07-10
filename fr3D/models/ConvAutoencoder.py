@@ -13,7 +13,7 @@ pool_layers = {1: tf.keras.layers.AveragePooling1D,
 normalization_layers = {'layernorm': tf.keras.layers.LayerNormalization,
                         'batchnorm': tf.keras.layers.BatchNormalization}
 
-def conv_block(input_tensor, filters: int, kernel_size: int = 3, ndims: int = 3, activation = None, normalization = None, pre_activation: bool = False, residual_connection: bool = False):
+def conv_block(input_tensor, filters: int, kernel_size: int = 3, ndims: int = 3, activation = None, normalization = None, pre_activation: bool = False, residual_connection: bool = False, kernel_initializer=None):
 
     x = input_tensor
 
@@ -23,7 +23,11 @@ def conv_block(input_tensor, filters: int, kernel_size: int = 3, ndims: int = 3,
             x = normalization_layers[normalization](axis=norm_axis)(x)
         if pre_activation:
             x = tf.keras.layers.Activation(tf.nn.relu)(x)
-        x = conv_layers[ndims](filters, kernel_size, padding='same', activation=activation)(x)
+        x = conv_layers[ndims](filters,
+                               kernel_size,
+                               padding='same',
+                               activation=activation,
+                               kernel_initializer=kernel_initializer)(x)
 
     if residual_connection:
         x = x + input_tensor
