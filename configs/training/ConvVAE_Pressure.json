@@ -8,7 +8,8 @@
 	"pre_activation": true,
 	"residual_connection": true,
 	"blocks_per_level": 4,
-	"pool_size": 2
+	"pool_size": 2,
+	"dropout": 0.50
     },
     "training": {
 	"epochs": 200,

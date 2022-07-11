@@ -13,9 +13,12 @@ pool_layers = {1: tf.keras.layers.AveragePooling1D,
 normalization_layers = {'layernorm': tf.keras.layers.LayerNormalization,
                         'batchnorm': tf.keras.layers.BatchNormalization}
 
-def conv_block(input_tensor, filters: int, kernel_size: int = 3, ndims: int = 3, activation = None, normalization = None, pre_activation: bool = False, residual_connection: bool = False, kernel_initializer=None):
+def conv_block(input_tensor, filters: int, kernel_size: int = 3, ndims: int = 3, activation = None, normalization = None, pre_activation: bool = False, residual_connection: bool = False, kernel_initializer=None, dropout=False):
 
     x = input_tensor
+
+    if dropout:
+        x = tf.keras.layers.Dropout(dropout)(x)
 
     for k in range(2):
         if normalization is not None:
@@ -34,7 +37,7 @@ def conv_block(input_tensor, filters: int, kernel_size: int = 3, ndims: int = 3,
         
     return x
 
-def encoder_block(input_tensor, levels: int, base_filters: int, kernel_size: int = 3, activation = None, normalization = None, pre_activation: bool = True, residual_connection: bool = True, blocks_per_level: int = 4, pool_size: int = 2):
+def encoder_block(input_tensor, levels: int, base_filters: int, kernel_size: int = 3, activation = None, normalization = None, pre_activation: bool = True, residual_connection: bool = True, blocks_per_level: int = 4, pool_size: int = 2, dropout=False):
 
     ndims = len(input_tensor.shape)-2
 
@@ -54,14 +57,15 @@ def encoder_block(input_tensor, levels: int, base_filters: int, kernel_size: int
                            activation=activation,
                            normalization=normalization,
                            pre_activation=pre_activation,
-                           residual_connection=residual_connection)
+                           residual_connection=residual_connection,
+                           dropout=dropout)
 
         if k < (levels-1):
             x = pool_layers[ndims](padding='same', pool_size = pool_size)(x)
 
     return x
 
-def decoder_block(input_tensor, levels: int, output_filters: int, kernel_size: int = 3, activation = None, final_activation = None, pre_activation: bool = True, residual_connection: bool = True, normalization = None, blocks_per_level: int = 4, deconv_stride: int = 2):
+def decoder_block(input_tensor, levels: int, output_filters: int, kernel_size: int = 3, activation = None, final_activation = None, pre_activation: bool = True, residual_connection: bool = True, normalization = None, blocks_per_level: int = 4, deconv_stride: int = 2, dropout=False):
 
     norm_axis = 1 if tf.keras.backend.image_data_format()=='channels_first' else -1
     base_filters = input_tensor.shape[norm_axis]
@@ -77,7 +81,8 @@ def decoder_block(input_tensor, levels: int, output_filters: int, kernel_size: i
                        activation=activation,
                        normalization=normalization,
                        pre_activation=pre_activation,
-                       residual_connection=residual_connection)
+                       residual_connection=residual_connection,
+                       dropout=dropout)
 
     for k in range(levels):
         level_filters = base_filters//(2**(k+1))
@@ -91,7 +96,8 @@ def decoder_block(input_tensor, levels: int, output_filters: int, kernel_size: i
                            activation=activation,
                            normalization=normalization,
                            pre_activation=pre_activation,
-                           residual_connection=residual_connection)
+                           residual_connection=residual_connection,
+                           dropout=dropout)
 
     x = conv_layers[ndims](output_filters, kernel_size, activation=final_activation, padding='same')(x)
             
@@ -107,6 +113,7 @@ class ConvAutoencoder(tf.keras.models.Model):
                  residual_connection: bool = True,
                  blocks_per_level: int = 4,
                  pool_size: int = 2,
+                 dropout=False,
                  input_shape = None, ndims: int = 3, filters: int = None, auto_build=True):
 
         super().__init__()
@@ -135,7 +142,8 @@ class ConvAutoencoder(tf.keras.models.Model):
                                           pre_activation=pre_activation,
                                           residual_connection=residual_connection,
                                           blocks_per_level=blocks_per_level,
-                                          pool_size=pool_size)
+                                          pool_size=pool_size,
+                                          dropout=dropout)
 
         self.encoder = tf.keras.Model(inp, encoder_out, name='encoder')
 
@@ -148,7 +156,8 @@ class ConvAutoencoder(tf.keras.models.Model):
                                           pre_activation=pre_activation,
                                           residual_connection=residual_connection,
                                           blocks_per_level=blocks_per_level,
-                                          deconv_stride=pool_size)
+                                          deconv_stride=pool_size,
+                                          dropout=dropout)
 
         self.decoder = tf.keras.Model(encoder_out, decoder_out, name='decoder')
 
