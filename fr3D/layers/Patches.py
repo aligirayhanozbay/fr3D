@@ -58,9 +58,8 @@ class Patches(tf.keras.layers.Layer):
 
 
 class PatchEncoder(tf.keras.layers.Layer):
-    def __init__(self, projection_dim, individual_embeddings=False):
+    def __init__(self, projection_dim):
         super().__init__()
-        self.individual_embeddings = individual_embeddings
         self.projection = tf.keras.layers.Dense(projection_dim)
 
     def build(self, input_shape):
@@ -76,14 +75,11 @@ class PatchEncoder(tf.keras.layers.Layer):
         patch_embedding = self.projection(patches)
         positional_embedding = self.position_embedding(positions)
         encoding = patch_embedding + positional_embedding
-        if not self.individual_embeddings:
-            return encoding
-        else:
-            return encoding, patch_embedding, positional_embedding
+        return encoding
 
 class MaskedPatchEncoder(PatchEncoder):
     def __init__(self, projection_dim, mask_proportion, downstream=False, **kwargs):
-        super().__init__(projection_dim, individual_embeddings=True, **kwargs)
+        super().__init__(projection_dim, **kwargs)
 
         if isinstance(mask_proportion, float):
             mask_proportion = (mask_proportion, mask_proportion)
@@ -92,70 +88,32 @@ class MaskedPatchEncoder(PatchEncoder):
 
     def build(self, input_shape):
         super().build(input_shape)
-        print('asd')
         self.mask_token = self.add_weight(name='mask_token',
-                                          shape=[1,input_shape[2]],
+                                          shape=[1,1,self.projection.units],
                                           dtype=self.projection.dtype,
                                           initializer=tf.keras.initializers.RandomNormal(0.0,1.0),
                                           trainable=True)
 
-    def get_random_indices(self, batch_size):
-
-        rand_indices = tf.argsort(
-            tf.random.uniform(shape=(batch_size, self.num_patches)), axis=-1
-        )
-        num_mask = tf.cast(self.num_patches*tf.random.uniform([],minval=self.mask_proportion[0], maxval=self.mask_proportion[1]), tf.int32)
-        mask_indices = rand_indices[:,:num_mask]
-        unmask_indices = rand_indices[:num_mask:]
-        return mask_indices, unmask_indices
+    def get_mask(self, batch_size):
+        proportion_masked = tf.random.uniform(shape=(batch_size,1), minval=self.mask_proportion[0], maxval=self.mask_proportion[1])
+        randvals = tf.random.uniform(shape=(batch_size, self.num_patches))
+        return tf.cast(randvals <= proportion_masked, tf.keras.backend.floatx())
 
     def call(self, patches):
         batch_size = tf.shape(patches)[0]
-        patch_embeddings, _, pos_embeddings = super().call(patches)
-        pos_embeddings = tf.tile(
-            pos_embeddings[tf.newaxis], [batch_size, 1, 1]
-        )
-
-        if self.downstream:
-            return patch_embeddings
-        else:
-            mask_indices, unmask_indices = self.get_random_indices(batch_size)
-            num_mask = tf.shape(mask_indices)[1]
-            # The encoder input is the unmasked patch embeddings. Here we gather
-            # all the patches that should be unmasked.
-            unmasked_embeddings = tf.gather(
-                patch_embeddings, unmask_indices, axis=1, batch_dims=1
-            )  # (B, unmask_numbers, projection_dim)
-
-            # Get the unmasked and masked position embeddings. We will need them
-            # for the decoder.
-            unmasked_positions = tf.gather(
-                pos_embeddings, unmask_indices, axis=1, batch_dims=1
-            )  # (B, unmask_numbers, projection_dim)
-            masked_positions = tf.gather(
-                pos_embeddings, mask_indices, axis=1, batch_dims=1
-            )  # (B, mask_numbers, projection_dim)
-
-            # Repeat the mask token number of mask times.
-            # Mask tokens replace the masks of the image.
-            mask_tokens = tf.repeat(self.mask_token, repeats=num_mask, axis=0)
-            mask_tokens = tf.repeat(
-                mask_tokens[tf.newaxis, ...], repeats=batch_size, axis=0
-            )
-
-            # Get the masked embeddings for the tokens.
-            masked_embeddings = self.projection(mask_tokens) + masked_positions
-            return (
-                unmasked_embeddings,  # Input to the encoder.
-                masked_embeddings,  # First part of input to the decoder.
-                unmasked_positions,  # Added to the encoder outputs.
-                mask_indices,  # The indices that were masked.
-                unmask_indices,  # The indices that were unmaksed.
-            )
+        encodings = super().call(patches)
+        
+        mask = self.get_mask(batch_size)
+        
+        return  (1-mask[...,tf.newaxis])*encodings + mask[...,tf.newaxis]*self.mask_token
+        
 
 if __name__ == '__main__':
+    z = tf.random.uniform((2,64,64,64,3))
     x = tf.keras.layers.Input(shape=(64,64,64,3))
     o = Patches(8)(x)
     o = MaskedPatchEncoder(768, (0.25,0.50))(o)
     mod = tf.keras.Model(x,o)
+    mod.compile(loss='mse', optimizer='sgd')
     mod.summary()
+    zz = mod(z)
