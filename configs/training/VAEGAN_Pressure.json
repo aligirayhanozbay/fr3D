@@ -1,0 +1,54 @@
+{
+    "generator": {
+	"levels": 4,
+	"base_filters": 32,
+	"kernel_size": 3,
+	"activation": "leaky_relu",
+	"normalization": "batchnorm",
+	"pre_activation": true,
+	"residual_connection": true,
+	"blocks_per_level": 4,
+	"pool_size": 2,
+	"dropout": 0.20
+    },
+    "training": {
+	"epochs": 200,
+	"validation_steps": 20,
+	"early_stopping": {"patience": 15, "verbose": true, "monitor": "loss"},
+	"reduce_lr": {"patience": 7, "verbose": true, "min_lr": 1e-6, "monitor": "loss"},
+	"model_checkpoint": {"save_best_only": true, "monitor": "loss"},
+	"reconstruction_loss": "mse",
+	"d_optimizer": {
+		"class_name": "adam",
+		"config": {
+			"learning_rate": 1e-4
+		}
+	},
+	"g_optimizer": {
+		"class_name": "adam",
+		"config": {
+			"learning_rate": 1e-4
+		}
+	}
+    },
+    "dataset": {
+	"batch_size": 30,
+	"train_test_split": [0.80,0.20],
+	"training_node": "pressure",
+	"node_configurations":[
+	    {
+		"nodetype": "HDF5IODataset",
+		"identifier": "full_field",
+		"field": "full_field"
+            },
+	    {
+		"nodetype": "keep_vars",
+		"identifier": "pressure",
+		"inputs": ["full_field"],
+		"vars_to_keep": ["p"]
+	    }
+			       
+	]
+    }
+
+}
