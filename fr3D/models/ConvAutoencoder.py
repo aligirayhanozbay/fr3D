@@ -7,9 +7,12 @@ conv_layers = {1: tf.keras.layers.Conv1D,
 deconv_layers = {1: tf.keras.layers.Conv1DTranspose,
                  2:tf.keras.layers.Conv2DTranspose,
                  3:tf.keras.layers.Conv3DTranspose}
-pool_layers = {1: tf.keras.layers.AveragePooling1D,
-               2: tf.keras.layers.AveragePooling2D,
-               3: tf.keras.layers.AveragePooling3D}
+average_pool_layers = {1: tf.keras.layers.AveragePooling1D,
+                       2: tf.keras.layers.AveragePooling2D,
+                       3: tf.keras.layers.AveragePooling3D}
+max_pool_layers = {1: tf.keras.layers.MaxPooling1D,
+                   2: tf.keras.layers.MaxPooling2D,
+                   3: tf.keras.layers.MaxPooling3D}
 normalization_layers = {'layernorm': tf.keras.layers.LayerNormalization,
                         'batchnorm': tf.keras.layers.BatchNormalization}
 
@@ -37,7 +40,14 @@ def conv_block(input_tensor, filters: int, kernel_size: int = 3, ndims: int = 3,
         
     return x
 
-def encoder_block(input_tensor, levels: int, base_filters: int, kernel_size: int = 3, activation = None, normalization = None, pre_activation: bool = True, residual_connection: bool = True, blocks_per_level: int = 4, pool_size: int = 2, dropout=False):
+def encoder_block(input_tensor, levels: int, base_filters: int, kernel_size: int = 3, activation = None, normalization = None, pre_activation: bool = True, residual_connection: bool = True, blocks_per_level: int = 4, pool_size: int = 2, dropout=False, pool_type='average'):
+
+    if pool_type == 'average':
+        pool_layers = average_pool_layers
+    elif pool_type == 'max':
+        pool_layers = max_pool_layers
+    else:
+        raise(ValueError(f'Unrecognized pooling type {pool_type} - choose average or max'))
 
     ndims = len(input_tensor.shape)-2
 

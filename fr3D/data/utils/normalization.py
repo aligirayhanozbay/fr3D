@@ -110,6 +110,17 @@ class UnitVectorNormalization(BaseNormalization):
     def undo(self, xhat, norm_params):
         return x*norm_params
 
+class NoneNormalization(BaseNormalization):
+    name=None
+    def _get_parameters(self, x):
+        return 0
+
+    def _apply(self, x):
+        return x[0]
+
+    def undo(self, xhat, norm_params):
+        return xhat
+
 def get_normalization(method, **kwargs):
 
     try:

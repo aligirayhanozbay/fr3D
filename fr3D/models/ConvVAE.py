@@ -24,41 +24,13 @@ class ConvVAE(ConvAutoencoder):
 
         self.latent_sampler = self.create_latent_sampler(self.encoder.output_shape[1:])
 
+        self._vae_loss_coeff = 1e-4
+
         self.build(self.encoder.input_shape)
         
 
     @staticmethod
     def create_latent_sampler(latent_space_shape, bottleneck_size=None, kernel_size=3):
-        '''
-        if isinstance(latent_space_shape, int):
-            latent_space_size = latent_space_shape
-            latent_space_shape = (latent_space_shape,)
-        else:
-            latent_space_size = int(tf.reduce_prod(latent_space_shape))
-        
-        if bottleneck_size is None:
-            bottleneck_size = latent_space_size
-
-        inp = tf.keras.layers.Input(shape=latent_space_shape)
-        if len(latent_space_shape)>1:
-            x = tf.keras.layers.Flatten()(inp)
-        else:
-            x = inp
-
-        dense_z_mean = tf.keras.layers.Dense(bottleneck_size, name='z_mean')(x)
-        z_mean = tf.keras.layers.BatchNormalization()(dense_z_mean)
-        
-        dense_z_log_sigma = tf.keras.layers.Dense(bottleneck_size,kernel_initializer='zeros',name='z_log_sigma')(x)
-        z_log_sigma = tf.keras.layers.BatchNormalization()(dense_z_log_sigma)
-
-        z = tf.keras.layers.Lambda(lambda x: sampling(x[0],x[1]))([z_mean, z_log_sigma])
-        z = tf.keras.layers.Dense(latent_space_size)(z)
-        z = tf.keras.layers.Reshape(latent_space_shape)(z)
-
-        latent_sampler = tf.keras.Model(inp, [z_mean, z_log_sigma, z], name='latent_sampler')
-
-        return latent_sampler
-        '''
         ndims = len(latent_space_shape)-1
         nfilters = latent_space_shape[-1]
         
@@ -97,11 +69,11 @@ class ConvVAE(ConvAutoencoder):
         return self.compute_metrics(x, x, y, sample_weight=None)
         
 
-    def fit(self, *args, vae_loss_coeff=1e-3, **kwargs):
-        self._vae_loss_coeff = vae_loss_coeff
+    def fit(self, *args, vae_loss_coeff=None, **kwargs):
+        self._vae_loss_coeff = vae_loss_coeff or self._vae_loss_coeff
         return super().fit(*args, **kwargs)
             
 
-            
+        
         
         

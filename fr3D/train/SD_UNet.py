@@ -3,10 +3,8 @@ import json
 import tensorflow as tf
 import numpy as np
 
-from .utils import modify_node_types, prepare_dataset_for_training
+from .utils import setup_datasets
 from ..models.SD_UNet import SD_UNet
-from ..data import DatasetPipelineBuilder
-from ..data.utils import hdf5_train_test_split
 
 tf.keras.backend.set_image_data_format('channels_last')
 #tf.keras.mixed_precision.set_global_policy('mixed_float16')
@@ -23,30 +21,10 @@ args = parser.parse_args()
 config = json.load(open(args.experiment_config,'r'))
 
 #setup datasets
-node_configs = modify_node_types(config['dataset']['node_configurations'], 'HDF5IODataset', 'filepath', args.dataset_path)
+train_dataset, test_dataset = setup_datasets(config, args.dataset_path, args.shuffle_size)
 
-if 'train_test_split' in config['dataset']:
-    np.random.seed(42)
-    train_geometries, test_geometries = hdf5_train_test_split(args.dataset_path, config['dataset']['train_test_split'][:2], shuffle=True)
-    print(f'Training geometries: {train_geometries}')
-    print(f'Test geometries: {test_geometries}')
-    train_node_configurations = modify_node_types(node_configs, 'HDF5IODataset', 'groups', train_geometries)
-    test_node_configurations = modify_node_types(node_configs, 'HDF5IODataset', 'groups', test_geometries)
-
-    test_dataset_pipeline = DatasetPipelineBuilder(test_node_configurations)
-    test_dataset = prepare_dataset_for_training(test_dataset_pipeline.get_node(config['dataset']['training_node']).dataset, config['dataset']['batch_size'], args.shuffle_size)
-else:
-    train_node_configurations = node_configs
-    test_dataset = None
-
-train_dataset_pipeline = DatasetPipelineBuilder(train_node_configurations)
-train_dataset = prepare_dataset_for_training(train_dataset_pipeline.get_node(config['dataset']['training_node']).dataset, config['dataset']['batch_size'], args.shuffle_size)
-
-dummy_input, dummy_output = next(iter(train_dataset))
-input_units = dummy_input.shape[-1]
-output_channels = dummy_output.shape[-1]
-grid_shape = dummy_output.shape[1:-1]
-del dummy_input, dummy_output
+input_shape = train_dataset.element_spec[0].shape
+output_shape = train_dataset.element_spec[1].shape
 
 #create model and train
 callbacks = [tf.keras.callbacks.ModelCheckpoint(args.checkpoint_path, save_best_only=True)]

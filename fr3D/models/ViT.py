@@ -184,11 +184,14 @@ class ViTFR(tf.keras.models.Model):
 
         sensor_inputs, full_fields = x
         pred = self(x)
+        loss_val = self.compiled_loss(full_fields, pred)
 
         # Report progress.
         self.compiled_metrics.update_state(full_fields, pred)
         return {m.name: m.result() for m in self.metrics}
         
+        
+    
 
 if __name__ == '__main__':
 

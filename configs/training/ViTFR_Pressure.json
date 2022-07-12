@@ -6,8 +6,8 @@
 	"encoder_layers": 6,
 	"decoder_heads": 4,
 	"decoder_layers": 2,
-	"mask_proportion": [0.70,1.0],
-	"final_activation": "linear"
+	"mask_proportion": [0.50,1.0],
+	"final_activation": null
     },
     "training": {
 	"epochs": 200,
@@ -81,7 +81,8 @@
 		"identifier": "normalize_pressure",
 		"inputs": ["zip_pressure"],
 		"normalization_spec": {
-		    "method": "zscore",
+		    "method": null,
+		    "source": "target",
                     "axis": [-2,-3,-4],
                     "return_parameters": true
 		}
@@ -91,7 +92,8 @@
 		"identifier": "normalize_velocity",
 		"inputs": ["zip_velocity"],
 		"normalization_spec": {
-                    "method": "zscore",
+                    "method": null,
+		    "source": "target",
                     "axis": [-2,-3,-4],
                     "return_parameters": true
 		}
