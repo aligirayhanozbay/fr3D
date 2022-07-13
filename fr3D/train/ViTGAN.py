@@ -43,8 +43,7 @@ with distribute_strategy.scope():
 
     if args.generator_weights is not None:
         generator.load_weights(args.generator_weights)
-
-    recons_loss = tf.keras.losses.MeanSquaredError(reduction='none')
+        
     GAN = ViTGAN(generator,
                  generator_output_shape=output_shape[1:],
                  **config.get('discriminator',{}))
