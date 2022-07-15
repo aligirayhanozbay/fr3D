@@ -30,9 +30,9 @@ class ConvVAE(ConvAutoencoder):
         
 
     @staticmethod
-    def create_latent_sampler(latent_space_shape, bottleneck_size=None, kernel_size=3):
+    def create_latent_sampler(latent_space_shape, kernel_size=3):
         ndims = len(latent_space_shape)-1
-        nfilters = latent_space_shape[-1]
+        nfilters = latent_space_shape[0 if tf.keras.backend.image_data_format() == 'channels_first' else -1]
         
         inp = tf.keras.layers.Input(shape=latent_space_shape)
 

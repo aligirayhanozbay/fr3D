@@ -182,25 +182,9 @@ class ConvAutoencoder(tf.keras.models.Model):
     def create_decoder(*args, **kwargs):
         return decoder_block(*args, **kwargs)
 
-    '''
-    def save_weights(self, path, overwrite=True, save_format=None, options=None):
-        filename, file_ext = os.path.splitext(path)
-        encoder_filename = filename + '_encoder' + file_ext
-        decoder_filename = filename + '_decoder' + file_ext
-        self.encoder.save_weights(encoder_filename, overwrite=overwrite, save_format=save_format, options=options)
-        self.decoder.save_weights(decoder_filename, overwrite=overwrite, save_format=save_format, options=options)
-
-    def save(self, path, overwrite=True, include_optimizer=True, save_format=None, signatures=None, options=None, save_traces=True):
-        filename, file_ext = os.path.splitext(path)
-        encoder_filename = filename + '_encoder' + file_ext
-        decoder_filename = filename + '_decoder' + file_ext
-        self.encoder.save(encoder_filename, overwrite=overwrite, save_format=save_format, options=options, include_optimizer=include_optimizer, save_traces=save_traces, signatures=signatures)
-        self.decoder.save(decoder_filename, overwrite=overwrite, save_format=save_format, options=options, include_optimizer=include_optimizer, save_traces=save_traces, signatures=signatures)
-
-    def load_weights(self, encoder_path, decoder_path):
-        self.encoder.load_weights(encoder_path)
-        self.decoder.load_weights(decoder_path)
-    '''
+    @property
+    def output_shape(self):
+        return self.decoder.output_shape
     
     def call(self, inp, training=None):
         return self.decoder(self.encoder(inp, training=training), training=training)
