@@ -194,6 +194,81 @@ class ConvAutoencoder(tf.keras.models.Model):
 
     def test_step(self, x):
         return super().test_step((x,x))
+
+
+class ConvAutoencoderC(ConvAutoencoder):
+
+    def __init__(self, dense_input_units, *args, autoencoder_input_shape=None, auto_build=True, **kwargs):
+        super().__init__(*args, input_shape=autoencoder_input_shape, auto_build=False, **kwargs)
+
+        self.latent_space_embedder = self.make_latent_space_embedder(self.decoder.input_shape[1:], dense_input_units)
+
+        if auto_build:
+            self.build(self.encoder.input_shape)
+
+    @staticmethod
+    def make_latent_space_embedder(latent_space_shape, input_units, dense_activation=tf.nn.leaky_relu):
+        
+        ndims = len(latent_space_shape)-1
+        nfilters = latent_space_shape[0 if tf.keras.backend.image_data_format() == 'channels_first' else -1]
+
+        inp = tf.keras.layers.Input(shape=(input_units,))
+        x = tf.keras.layers.Dense(tf.reduce_prod(latent_space_shape), activation=dense_activation)(inp)
+        x = tf.keras.layers.Reshape(latent_space_shape)(x)
+        for _ in range(3):
+            x = conv_block(x, nfilters, 3, ndims, normalization='batchnorm')
+
+        latent_space_embedder = tf.keras.Model(inp, x, name='latent_embedder')
+
+        return latent_space_embedder
+
+    def call(self, inp, training=None, autoencode=True):
+        if autoencode:
+            return super().call(inp, training=training)
+        else:
+            return self.decoder(self.latent_space_embedder(inp, training=training), training=training)
+
+    @staticmethod
+    def unify_metrics(autoencoder_metrics, latent_embedder_metrics):
+        metrics_dict = {}
+        for metric in autoencoder_metrics:
+            metrics_dict[metric+'_AE'] = autoencoder_metrics[metric]
+        for metric in latent_embedder_metrics:
+            metrics_dict[metric+'_LE'] = latent_embedder_metrics[metric]
+        return metrics_dict
+        
+
+    def train_step(self, x):
+
+        sensor_inputs, full_fields = x
+
+        autoencoder_metrics = super().train_step(full_fields)
+
+        with tf.GradientTape(watch_accessed_variables=False) as tape:
+            tape.watch(self.latent_space_embedder.trainable_variables)
+            latent_space_pred = self(sensor_inputs, autoencode=False, training=True)
+            latent_space_loss = self.compute_loss(sensor_inputs, full_fields, latent_space_pred)
+        self.l_optimizer.minimize(latent_space_loss, self.latent_space_embedder.trainable_variables, tape=tape)
+        latent_embedder_metrics = self.compute_metrics(sensor_inputs, full_fields, latent_space_pred, None)
+            
+        return self.unify_metrics(autoencoder_metrics, latent_embedder_metrics)
+
+    def test_step(self, x):
+
+        sensor_inputs, full_fields = x
+
+        autoencoder_metrics = super().test_step(full_fields)
+        
+        latent_space_pred = self(sensor_inputs, autoencode=False, training=False)
+        latent_space_loss = self.compute_loss(sensor_inputs, full_fields, latent_space_pred)
+        latent_embedder_metrics = self.compute_metrics(sensor_inputs, full_fields, latent_space_pred, None)
+
+        return self.unify_metrics(autoencoder_metrics, latent_embedder_metrics)
+
+    def compile(self, l_optimizer, *args, **kwargs):
+        self.l_optimizer = l_optimizer
+        super().compile(*args, **kwargs)
+        
         
 
 if __name__ == '__main__':

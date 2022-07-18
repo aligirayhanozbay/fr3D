@@ -1,6 +1,6 @@
 import tensorflow as tf
 import copy
-from .ConvAutoencoder import encoder_block, conv_block
+from .ConvAutoencoder import encoder_block, conv_block, ConvAutoencoderC
 from .ConvVAE import VAELoss, ConvVAE
 
 @tf.function
@@ -306,21 +306,12 @@ class VAECGAN(CGAN):
 
 class ConvAutoencoderCGAN(CGAN):
     recons_loss_wt = 1.0
+    
     def make_latent_space_embedder(self, input_units, dense_activation=tf.nn.leaky_relu):
 
         latent_space_shape = self.generator.decoder.input_shape[1:]
-        ndims = len(latent_space_shape)-2
-        nfilters = latent_space_shape[1 if tf.keras.backend.image_data_format() == 'channels_first' else -1]
 
-        inp = tf.keras.layers.Input(shape=(input_units,))
-        x = tf.keras.layers.Dense(tf.reduce_prod(latent_space_shape), activation=dense_activation)(inp)
-        x = tf.keras.layers.Reshape(latent_space_shape)(x)
-        for _ in range(3):
-            x = conv_block(x, nfilters, 3, ndims, normalization='batchnorm')
-
-        latent_space_embedder = tf.keras.Model(inp, x, name='latent_embedder')
-
-        return latent_space_embedder
+        return ConvAutoencoderC.make_latent_space_embedder(latent_space_shape, input_units)
 
     def train_step(self, x):
 
