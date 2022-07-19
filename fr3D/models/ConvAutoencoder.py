@@ -77,15 +77,15 @@ def encoder_block(input_tensor, levels: int, base_filters: int, kernel_size: int
 
 def decoder_block(input_tensor, levels: int, output_filters: int, kernel_size: int = 3, activation = None, final_activation = None, pre_activation: bool = True, residual_connection: bool = True, normalization = None, blocks_per_level: int = 4, deconv_stride: int = 2, dropout=False):
 
-    norm_axis = 1 if tf.keras.backend.image_data_format()=='channels_first' else -1
-    base_filters = input_tensor.shape[norm_axis]
-    ndims = len(input_tensor.shape)-2
-
     if isinstance(input_tensor, tuple) or isinstance(input_tensor, list):
         make_model=True
         input_tensor = tf.keras.layers.Input(shape=input_tensor)
     else:
         make_model=False
+
+    norm_axis = 1 if tf.keras.backend.image_data_format()=='channels_first' else -1
+    base_filters = input_tensor.shape[norm_axis]
+    ndims = len(input_tensor.shape)-2
     
     x = input_tensor
 
