@@ -80,6 +80,12 @@ def decoder_block(input_tensor, levels: int, output_filters: int, kernel_size: i
     norm_axis = 1 if tf.keras.backend.image_data_format()=='channels_first' else -1
     base_filters = input_tensor.shape[norm_axis]
     ndims = len(input_tensor.shape)-2
+
+    if isinstance(input_tensor, tuple) or isinstance(input_tensor, list):
+        make_model=True
+        input_tensor = tf.keras.layers.Input(shape=input_tensor)
+    else:
+        make_model=False
     
     x = input_tensor
 
@@ -110,6 +116,9 @@ def decoder_block(input_tensor, levels: int, output_filters: int, kernel_size: i
                            dropout=dropout)
 
     x = conv_layers[ndims](output_filters, kernel_size, activation=final_activation, padding='same')(x)
+
+    if make_model:
+        x = tf.keras.Model(input_tensor, x, name='decoder_block')
             
     return x
 
@@ -195,7 +204,6 @@ class ConvAutoencoder(tf.keras.models.Model):
     def test_step(self, x):
         return super().test_step((x,x))
 
-
 class ConvAutoencoderC(ConvAutoencoder):
 
     def __init__(self, dense_input_units, *args, autoencoder_input_shape=None, auto_build=True, **kwargs):
@@ -242,7 +250,9 @@ class ConvAutoencoderC(ConvAutoencoder):
 
         sensor_inputs, full_fields = x
 
+        self.latent_space_embedder.trainable=False
         autoencoder_metrics = super().train_step(full_fields)
+        self.latent_space_embedder.trainable=True
 
         with tf.GradientTape(watch_accessed_variables=False) as tape:
             tape.watch(self.latent_space_embedder.trainable_variables)
