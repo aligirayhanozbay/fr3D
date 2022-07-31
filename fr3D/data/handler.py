@@ -83,7 +83,25 @@ class HDF5IODatasetNode(DatasetPipelineNode):
                 groups = list(f.keys())
         
         self._dataset = merge_datasets([tfio.IODataset.from_hdf5(filepath, f'/{group}/{field}' if field is not None else f'/{group}', **tfio_IODataset_options) for group in groups])
-           
+
+class HDF5DataPathNode(DatasetPipelineNode):
+    nodetype='HDF5DataPath'
+    n_inputnodes=0
+    def __init__(self, filepath: str, field:str, groups: tuple[str] = None, **kwargs):
+        super().__init__(inputs=tuple(), **kwargs)
+
+        datasets = []
+        with h5py.File(filepath, 'r') as f:
+            groups = groups or list(f.keys())
+            
+            for group in groups:
+                data_path = f'/{group}/{field}' if field is not None else f'/{group}'
+                n_samples = f[data_path].shape[0]
+                ds = tf.data.Dataset.from_tensor_slices([data_path.split('/')[1]]).repeat(count=n_samples)
+                datasets.append(ds)
+
+        self._dataset = merge_datasets(datasets)
+
 class TakeElementNode(DatasetPipelineNode):
     nodetype='take'
     n_inputnodes=1

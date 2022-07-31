@@ -254,11 +254,13 @@ class ConvAutoencoderC(ConvAutoencoder):
         autoencoder_metrics = super().train_step(full_fields)
         self.latent_space_embedder.trainable=True
 
-        with tf.GradientTape(watch_accessed_variables=False) as tape:
-            tape.watch(self.latent_space_embedder.trainable_variables)
-            latent_space_pred = self(sensor_inputs, autoencode=False, training=True)
-            latent_space_loss = self.compute_loss(sensor_inputs, full_fields, latent_space_pred)
-        self.l_optimizer.minimize(latent_space_loss, self.latent_space_embedder.trainable_variables, tape=tape)
+        
+        for _ in range(self.latent_space_step_ratio):
+            with tf.GradientTape(watch_accessed_variables=False) as tape:
+                tape.watch(self.latent_space_embedder.trainable_variables)
+                latent_space_pred = self(sensor_inputs, autoencode=False, training=True)
+                latent_space_loss = self.compute_loss(sensor_inputs, full_fields, latent_space_pred)
+            self.l_optimizer.minimize(latent_space_loss, self.latent_space_embedder.trainable_variables, tape=tape)
         latent_embedder_metrics = self.compute_metrics(sensor_inputs, full_fields, latent_space_pred, None)
             
         return self.unify_metrics(autoencoder_metrics, latent_embedder_metrics)
@@ -275,8 +277,9 @@ class ConvAutoencoderC(ConvAutoencoder):
 
         return self.unify_metrics(autoencoder_metrics, latent_embedder_metrics)
 
-    def compile(self, l_optimizer, *args, **kwargs):
+    def compile(self, l_optimizer, latent_space_step_ratio = 1, *args, **kwargs):
         self.l_optimizer = l_optimizer
+        self.latent_space_step_ratio = latent_space_step_ratio
         super().compile(*args, **kwargs)
         
         

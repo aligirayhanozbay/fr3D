@@ -88,6 +88,12 @@ class CGAN(GAN):
 
         self.latent_space_embedder = self.make_latent_space_embedder(input_units)
 
+    def call(self, inp, training=None, autoencode=True):
+        if autoencode:
+            return self.generator(inp, training=training)
+        else:
+            return self.generator.decoder(self.latent_space_embedder(inp, training=training), training=training)
+
     def compile(self, l_optimizer, *args, **kwargs):
         self.l_optimizer = l_optimizer
         super().compile(*args, **kwargs)

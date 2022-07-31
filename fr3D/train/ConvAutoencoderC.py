@@ -16,7 +16,7 @@ parser.add_argument('experiment_config', type=str)
 parser.add_argument('dataset_path', type=str)
 parser.add_argument('checkpoint_path', type=str)
 parser.add_argument('--load_weights', type=str, default=None)
-parser.add_argument('--shuffle_size', type=int, default=500)
+parser.add_argument('--shuffle_size', type=int, default=1)
 args = parser.parse_args()
 
 config = json.load(open(args.experiment_config,'r'))
@@ -47,7 +47,8 @@ with distribute_strategy.scope():
     model.compile(l_optimizer= tf.keras.optimizers.get(config['training']['l_optimizer']),
                   loss=loss_fn,
                   optimizer = tf.keras.optimizers.get(config['training']['ae_optimizer']),
-                  metrics = config['training'].get('metrics', None))
+                  metrics = config['training'].get('metrics', None),
+                  latent_space_step_ratio = config['training'].get('latent_space_step_ratio', 1))
 
     if args.load_weights is not None:
         model.load_weights(args.load_weights)
