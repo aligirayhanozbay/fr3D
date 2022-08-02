@@ -21,12 +21,12 @@
 	"optimizer": {
 		"class_name": "adam",
 		"config": {
-			"learning_rate": 1e-4
+			"learning_rate": 3e-4
 		}
 	}
     },
     "dataset": {
-	"batch_size": 30,
+	"batch_size": 40,
 	"train_test_split": [0.80,0.20],
 	"training_node": "zip_input_output",
 	"node_configurations":[
