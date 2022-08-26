@@ -118,7 +118,7 @@ class NoneNormalization(BaseNormalization):
     def _apply(self, x):
         return x[0]
 
-    def undo(self, xhat, norm_params):
+    def undo(self, xhat, norm_params=None):
         return xhat
 
 def get_normalization(method, **kwargs):

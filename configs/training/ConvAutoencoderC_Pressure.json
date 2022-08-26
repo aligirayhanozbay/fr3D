@@ -37,6 +37,7 @@
 	"batch_size": 24,
 	"train_test_split": [0.80,0.20],
 	"training_node": "zip_input_output",
+	"evaluation_node": "zip_input_output_norm_params",
 	"node_configurations":[{
 		"nodetype": "HDF5IODataset",
 		"identifier": "sensors-pressure",
@@ -120,6 +121,12 @@
 		"take_idx": 1,
 		"inputs": ["normalize_pressure"]
             },
+	    {
+		"nodetype": "take",
+		"identifier": "pressure_norm_params",
+		"take_idx": 2,
+		"inputs": ["normalize_pressure"]
+	    },		       
             {
 		"nodetype": "take",
 		"identifier": "velocity_input",
@@ -132,6 +139,12 @@
 		"take_idx": 1,
 		"inputs": ["normalize_velocity"]
             },
+	    {
+		"nodetype": "take",
+		"identifier": "velocity_norm_params",
+		"take_idx": 2,
+		"inputs": ["normalize_velocity"]
+	    },
             {
 		"nodetype": "zip",
 		"identifier": "zip_output",
@@ -172,10 +185,33 @@
 		"inputs": ["zip_input"],
 		"axis": -1
             },
+            {
+		"nodetype": "zip",
+		"identifier": "zip_norm_params",
+		"inputs": ["pressure_norm_params", "velocity_norm_params"]
+            },
+            {
+		"nodetype": "concatenate",
+		"identifier": "concat_norm_params",
+		"inputs": ["zip_norm_params"],
+		"axis": -2
+	    },
+	    {
+		"nodetype": "keep_vars",
+		"identifier": "norm_params",
+		"inputs": ["concat_norm_params"],
+		"vars_to_keep": ["p"],
+		"axis": -2
+	    },
 	    {
 		"nodetype": "zip",
 		"identifier": "zip_input_output",
 		"inputs": ["input", "output"]
+	    },
+	    {
+		"nodetype": "zip",
+		"identifier": "zip_input_output_norm_params",
+		"inputs": ["input", "output", "norm_params"]
 	    }
 	]
     }

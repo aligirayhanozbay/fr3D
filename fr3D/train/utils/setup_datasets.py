@@ -1,3 +1,4 @@
+import warnings
 import numpy as np
 
 from .modify_node_types import modify_node_types
@@ -32,13 +33,22 @@ def add_case_name_output(node_configs: list[dict], output_node: str):
         
     
 
-def setup_datasets(config, dataset_path, shuffle_size=500, case_names=False):
+def setup_datasets(config, dataset_path, shuffle_size=500, case_names=False, evaluation=False):
     node_configs = modify_node_types(config['dataset']['node_configurations'], 'HDF5IODataset', 'filepath', dataset_path)
 
-    if case_names:
-        output_node = config['dataset']['training_node'] + '_case_name_zip'
+    if evaluation:
+        try:
+            orig_output_node = config['dataset']['evaluation_node']
+        except:
+            orig_output_node = config['dataset']['training_node']
+            warnings.warn("config['dataset']['evaluation_node'] missing - using config['dataset']['training_node'] instead")
     else:
-        output_node = config['dataset']['training_node']
+        orig_output_node = config['dataset']['training_node']
+
+    if case_names:
+        output_node = orig_output_node + '_case_name_zip'
+    else:
+        output_node = orig_output_node
 
     if 'train_test_split' in config['dataset']:
         np.random.seed(42)
@@ -49,7 +59,7 @@ def setup_datasets(config, dataset_path, shuffle_size=500, case_names=False):
         test_node_configurations = modify_node_types(node_configs, 'HDF5IODataset', 'groups', test_geometries)
 
         if case_names:
-            test_node_configurations = add_case_name_output(test_node_configurations, config['dataset']['training_node'])
+            test_node_configurations = add_case_name_output(test_node_configurations, orig_output_node)
 
         test_dataset_pipeline = DatasetPipelineBuilder(test_node_configurations)
         test_dataset = prepare_dataset_for_training(test_dataset_pipeline.get_node(output_node).dataset, config['dataset']['batch_size'], shuffle_size)
@@ -59,7 +69,7 @@ def setup_datasets(config, dataset_path, shuffle_size=500, case_names=False):
 
         
     if case_names:
-        train_node_configurations = add_case_name_output(train_node_configurations, config['dataset']['training_node'])
+        train_node_configurations = add_case_name_output(train_node_configurations, orig_output_node)
     train_dataset_pipeline = DatasetPipelineBuilder(train_node_configurations)
     train_dataset = prepare_dataset_for_training(train_dataset_pipeline.get_node(output_node).dataset, config['dataset']['batch_size'], shuffle_size)
 

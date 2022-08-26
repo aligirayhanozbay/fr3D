@@ -17,7 +17,7 @@ parser.add_argument('dataset_path', type=str)
 parser.add_argument('checkpoint_path', type=str)
 parser.add_argument('--load_weights', type=str, default=None)
 parser.add_argument('--generator_weights', type=str, default=None)
-parser.add_argument('--shuffle_size', type=int, default=500)
+parser.add_argument('--shuffle_size', type=int, default=1)
 args = parser.parse_args()
 
 config = json.load(open(args.experiment_config,'r'))
