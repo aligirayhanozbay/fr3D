@@ -303,9 +303,9 @@ class SpectralConv(tf.keras.layers.Layer):
         #cannot use complex weight directly due to tf bug - cant use both complex and float weights
         #in a model when using tf.distribute.MirroredStrategy...
         self.w = self.add_weight(shape = var_shape, initializer = initializer, dtype = tf.complex64, name='w')
-    #     self.wreal = self.add_weight(shape = var_shape, initializer = initializer, dtype = tf.keras.backend.floatx(), name='wreal')
-    #     self.wimag = self.add_weight(shape = var_shape, initializer = initializer, dtype = tf.keras.backend.floatx(), name='wimag')
-    #     self._complex_dtype = 'complex128' if tf.keras.backend.floatx() == 'float64' else 'float32'
+        # self.wreal = self.add_weight(shape = var_shape, initializer = initializer, dtype = tf.keras.backend.floatx(), name='wreal')
+        # self.wimag = self.add_weight(shape = var_shape, initializer = initializer, dtype = tf.keras.backend.floatx(), name='wimag')
+        # self._complex_dtype = 'complex128' if tf.keras.backend.floatx() == 'float64' else 'float32'
 
     # @property
     # @tf.function

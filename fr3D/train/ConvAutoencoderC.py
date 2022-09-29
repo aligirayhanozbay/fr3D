@@ -43,7 +43,20 @@ with distribute_strategy.scope():
                              **config['model'])
     model.summary()
 
-    loss_fn = tf.keras.losses.get(config['training']['loss'])
+    if len(config['training']['loss']) == 3 and config['training']['loss'][:2] == "Lp":
+        p = int(config['training']['loss'][-1])
+        
+        @tf.function
+        def Lp_loss(yt,yp):
+            if p%2 == 0:
+                return tf.reduce_mean((yt-yp)**p)
+            else:
+                return tf.reduce_mean(tf.abs((yt-yp)**p))
+        
+        loss_fn = Lp_loss
+    else:
+        loss_fn = tf.keras.losses.get(config['training']['loss'])
+    
     model.compile(l_optimizer= tf.keras.optimizers.get(config['training']['l_optimizer']),
                   loss=loss_fn,
                   optimizer = tf.keras.optimizers.get(config['training']['ae_optimizer']),

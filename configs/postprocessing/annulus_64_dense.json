@@ -1,0 +1,23 @@
+{
+	"sensors-pressure": {
+                "name": "pyfrm-annulus",
+                "physgrp": "obstacle",
+                "npts": [50,1,20],
+                "extrusion_dim": 2
+        },
+	"sensors-velocity": {
+                "name": "pyfrm-relative",
+                "physgrp": "obstacle",
+                "rel_to": ["maximum", "centroid", "centroid"],
+                "ptsreader": {
+                        "name": "grid",
+                        "linspace_args": [[0.5,3.5,10], [-2.5,2.5,10], [-4.5,4.5,25]]
+                }
+        },
+	"full_field": {
+                "name": "pyfrm-annulus",
+		"physgrp": "obstacle",
+		"npts": [64,64,64],
+		"extrusion_dim": 2
+        }
+}

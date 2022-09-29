@@ -70,7 +70,7 @@ class SpectralDecoderLayer_RealFullFFT(SpectralDecoderLayer):
     
     def call(self, x):
         xshape = tf.shape(x)
-        final_dim_even_length = tf.logical_not(tf.cast(xshape[-1]%2, tf.bool))
+        final_dim_even_length = tf.logical_not(tf.cast(xshape[-1 if tf.keras.backend.image_data_format()=='channels_first' else -2]%2, tf.bool))
         
         out_rfft = self._rfft_result(x)
         
@@ -89,17 +89,16 @@ class SpectralDecoderLayer_RealFullFFT(SpectralDecoderLayer):
         return self.activation(out)
 
 def SpectralDecoder(grid_shape, inp, out_channels, hidden_layer_channels, modes, hidden_layer_activations=None, return_layer=False, **fno_config):
-
+    
     if isinstance(inp, int) or isinstance(inp, tuple) or isinstance(inp, list):
         inp = tf.keras.layers.Input(inp)
-
+    
     if len(grid_shape) == 3:
         x = SpectralDecoderLayer_RealFullFFT(grid_shape, modes=modes, out_channels=hidden_layer_channels, activation=hidden_layer_activations)(inp)
     elif len(grid_shape) in [1,2]:
         x = SpectralDecoderLayer(grid_shape, modes=modes, out_channels=hidden_layer_channels, activation=hidden_layer_activations)(inp)
     else:
         raise(ValueError(f'grid_shape must contain 1,2 or 3 dimensions; got {len(grid_shape)}'))
-
 
     x = FNO(x, out_channels, hidden_layer_channels, modes, hidden_layer_activations=hidden_layer_activations, return_layer=True, **fno_config)
 
@@ -115,7 +114,7 @@ if __name__ == '__main__':
     m.summary()
 
     x = tf.random.uniform((2,100))
-    t = tf.random.uniform((2,) + m.output_shape[1:])
+    t = tf.random.uniform((2,64,64,64,2))
 
     with tf.GradientTape() as tape:
         y = m(x)
