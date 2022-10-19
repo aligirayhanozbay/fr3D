@@ -284,10 +284,51 @@ class ConvAutoencoderC(ConvAutoencoder):
         self.latent_space_step_ratio = latent_space_step_ratio
         super().compile(*args, **kwargs)
         
+
+class ConvAutoencoderD(ConvAutoencoderC):
+    
+    @staticmethod
+    def make_latent_space_embedder(latent_space_shape, input_shape, activation=tf.nn.leaky_relu):
+        ndims = len(latent_space_shape)-1
+        nfilters = latent_space_shape[0 if tf.keras.backend.image_data_format() == 'channels_first' else -1]
+
+        last_spatial_dim = -1 if tf.keras.backend.image_data_format() == 'channels_first' else -2
+        spatial_downsample_ratio = input_shape[last_spatial_dim]/latent_space_shape[last_spatial_dim]
+        spatial_downsample_steps = tf.math.log(spatial_downsample_ratio) / tf.math.log(2.0)
+        assert int(spatial_downsample_steps) == spatial_downsample_steps #must be a power of 2
+        spatial_downsample_steps = int(spatial_downsample_steps)
+
+        inp = tf.keras.layers.Input(shape=input_shape)
+
+        ff = 4
+        if tf.keras.backend.image_data_format() == 'channels_last':
+            channels_per_slice = inp.shape[-1]//2
+            x1 = inp[:,...,:channels_per_slice]
+            x2 = inp[:,...,channels_per_slice:]
+        else:
+            x1 = inp[:,:channels_per_slice,...]
+            x2 = inp[:,channels_per_slice:,...]
+
+        x1 = conv_block(x1, ff, ndims=2, activation=activation, normalization='batchnorm')
+        x2 = conv_block(x2, ff, ndims=2, activation=activation, normalization='batchnorm')
+
+        x1 = tf.expand_dims(x1, -1 if tf.keras.backend.image_data_format()=='channels_first' else -2)
+        x2 = tf.expand_dims(x2, -2 if tf.keras.backend.image_data_format()=='channels_first' else -3)
+
+        x = x1 + x2
+
         
+        for step in range(spatial_downsample_steps):
+            step_filters = ff + (nfilters-ff)*(step+1)/spatial_downsample_steps
+            x = tf.keras.layers.Conv3D(step_filters, 4, strides=2, activation = activation, padding='same')(x)
+            x = conv_block(x, step_filters, 3, ndims = 3, activation = activation, normalization = 'batchnorm', residual_connection=True)
+
+        latent_space_embedder = tf.keras.Model(inp, x, name='latent_embedder')
+
+        return latent_space_embedder    
 
 if __name__ == '__main__':
-
+    '''
     mod = ConvAutoencoder(levels=4,
                           base_filters=32,
                           normalization='batchnorm',
@@ -298,9 +339,10 @@ if __name__ == '__main__':
                           )
 
     mod.save_weights('/tmp/test.h5')
-
-    
-    import pdb; pdb.set_trace()
+    '''
+    tf.keras.backend.set_image_data_format('channels_last')
+    m = ConvAutoencoderD.make_latent_space_embedder([4,4,4,512],[128,128,2])
+    m.summary()
 
     
     

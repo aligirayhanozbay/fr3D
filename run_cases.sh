@@ -38,13 +38,13 @@ run_case() {
 	local pyfrm_base_path=$(basename "${pyfrm_path}")
 	if [ $mesh_file_ext = "msh" ];then
 		pyfr import -tgmsh ${mesh_file} ${pyfrm_path}
-		pyfr partition ${n_gpus} ${pyfrm_path} ${output_dir}
+		#pyfr partition ${n_gpus} ${pyfrm_path} ${output_dir}
 	fi
 
 	pushd ${output_dir}
 	local pyfrm_base_path=$(basename "${pyfrm_path}")
 	echo "running ${pyfrm_base_path}"
-	OMPI_ALLOW_RUN_AS_ROOT=1 OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1 mpirun -np ${n_gpus} pyfr run --backend ${pyfr_backend} --progress ${pyfrm_base_path} ${config_file} > pyfr.log
+	pyfr run --backend ${pyfr_backend} --progress ${pyfrm_base_path} ${config_file} > pyfr.log
 	popd
 }
 

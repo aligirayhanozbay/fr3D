@@ -150,7 +150,13 @@ class ConcatenateNode(DatasetPipelineNode):
     def _transform(self, ds):
         return ds.map(lambda *x: tf.concat(x, axis=self.axis))
 
-
+class SqueezeNode(DatasetPipelineNode):
+    nodetype='squeeze'
+    n_inputnodes=1
+    def _transform(self, ds):
+        return ds.map(lambda x: tf.squeeze(x))
+        
+    
 class DatasetPipelineBuilder:
     def __init__(self, node_configurations: tuple):
         self.nodes_in_graph = {}
