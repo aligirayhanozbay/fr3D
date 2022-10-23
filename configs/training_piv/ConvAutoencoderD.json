@@ -37,7 +37,7 @@
 	"batch_size": 16,
 	"train_test_split": [0.80,0.20],
 	"training_node": "zip_input_output",
-	"evaluation_node": "zip_input_output_norm_params",
+	"evaluation_node": "zip_input_output_normparams",
 	"node_configurations": [
 	    {
 		"nodetype": "HDF5IODataset",
@@ -102,7 +102,7 @@
 		"nodetype": "take",
 		"identifier": "take-xz",
 		"take_idx": 0,
-		"inputs": ["normalize-xy"]
+		"inputs": ["normalize-xz"]
 	    },
 	    {
 		"nodetype": "keep_vars",
