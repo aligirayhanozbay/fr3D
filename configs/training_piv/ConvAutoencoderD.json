@@ -38,129 +38,210 @@
 	"train_test_split": [0.80,0.20],
 	"training_node": "zip_input_output",
 	"evaluation_node": "zip_input_output_normparams",
-	"node_configurations": [
-	    {
+	"node_configurations": [{
 		"nodetype": "HDF5IODataset",
-		"identifier": "xy",
+		"identifier": "xy-rear",
 		"field": "xy-rear"
-	    },
-	    {
+            },
+            {
 		"nodetype": "HDF5IODataset",
-		"identifier": "xz",
+		"identifier": "xz-rear",
 		"field": "xz-rear"
-	    },
-	    {
+            },
+            {
 		"nodetype": "HDF5IODataset",
 		"identifier": "full_field",
 		"field": "full_field"
-	    },
+            },
+            {
+		"nodetype": "keep_vars",
+		"identifier": "xy-rear-keepvars",
+		"vars_to_keep": ["u", "v", "w"],
+		"inputs": ["xy-rear"]
+            },
+            {
+		"nodetype": "keep_vars",
+		"identifier": "xz-rear-keepvars",
+		"vars_to_keep": ["u", "v", "w"],
+		"inputs": ["xz-rear"]
+            },
+            {
+		"nodetype": "keep_vars",
+		"identifier": "full_field_pressure",
+		"vars_to_keep": ["p"],
+		"inputs": ["full_field"]
+            },
+            {
+		"nodetype": "keep_vars",
+		"identifier": "full_field_velocity",
+		"vars_to_keep": ["u", "v", "w"],
+		"inputs": ["full_field"]
+            },
+            {
+		"nodetype": "zip",
+		"identifier": "zip_pressure",
+		"inputs": ["full_field_pressure", "full_field_pressure"]
+            },
+            {
+		"nodetype": "zip",
+		"identifier": "zip_velocity_xy",
+		"inputs": ["xy-rear-keepvars", "full_field_velocity"]
+            },
 	    {
 		"nodetype": "zip",
-		"identifier": "xy-ff-prenorm",
-		"inputs": ["xy", "full_field"]
-	    },
-	    {
+		"identifier": "zip_velocity_xz",
+		"inputs": ["xz-rear-keepvars", "full_field_velocity"]
+            },
+            {
 		"nodetype": "normalize",
-		"identifier": "normalize-xy",
-		"inputs": ["xy-ff-prenorm"],
+		"identifier": "normalize_pressure",
+		"inputs": ["zip_pressure"],
 		"normalization_spec": {
 		    "method": "minmax",
 		    "source": "target",
-		    "axis": [-2,-3,-4],
-		    "return_parameters": true
+                    "axis": [-2,-3,-4],
+                    "return_parameters": true
 		}
-	    },
-	    {
-		"nodetype": "take",
-		"identifier": "take-xy",
-		"take_idx": 0,
-		"inputs": ["normalize-xy"]
-	    },
-	    {
-		"nodetype": "keep_vars",
-		"identifier": "keepvars-xy",
-		"vars_to_keep": ["u", "v", "w"],
-		"inputs": ["take-xy"]
-	    },
-	    {
-		"nodetype": "zip",
-		"identifier": "xz-ff-prenorm",
-		"inputs": ["xz", "full_field"]
-	    },
+            },
+            {
+		"nodetype": "normalize",
+		"identifier": "normalize_velocity_xy",
+		"inputs": ["zip_velocity_xy"],
+		"normalization_spec": {
+                    "method": "minmax",
+		    "source": "target",
+                    "axis": [-2,-3,-4],
+                    "return_parameters": true
+		}
+            },
 	    {
 		"nodetype": "normalize",
-		"identifier": "normalize-xz",
-		"inputs": ["xy-ff-prenorm"],
+		"identifier": "normalize_velocity_xz",
+		"inputs": ["zip_velocity_xz"],
 		"normalization_spec": {
-		    "method": "minmax",
+                    "method": "minmax",
 		    "source": "target",
-		    "axis": [-2,-3,-4],
-		    "return_parameters": false
+                    "axis": [-2,-3,-4],
+                    "return_parameters": true
 		}
+            },
+            {
+		"nodetype": "take",
+		"identifier": "pressure_input",
+		"take_idx": 0,
+		"inputs": ["normalize_pressure"]
+            },
+            {
+		"nodetype": "take",
+		"identifier": "pressure_output",
+		"take_idx": 1,
+		"inputs": ["normalize_pressure"]
+            },
+	    {
+		"nodetype": "take",
+		"identifier": "pressure_norm_params",
+		"take_idx": 2,
+		"inputs": ["normalize_pressure"]
+	    },		       
+            {
+		"nodetype": "take",
+		"identifier": "velocity_input_xy",
+		"take_idx": 0,
+		"inputs": ["normalize_velocity_xy"]
+            },
+            {
+		"nodetype": "take",
+		"identifier": "velocity_output_xy",
+		"take_idx": 1,
+		"inputs": ["normalize_velocity_xy"]
+            },
+	    {
+		"nodetype": "take",
+		"identifier": "velocity_norm_params_xy",
+		"take_idx": 2,
+		"inputs": ["normalize_velocity_xy"]
 	    },
 	    {
 		"nodetype": "take",
-		"identifier": "take-xz",
+		"identifier": "velocity_input_xz",
 		"take_idx": 0,
-		"inputs": ["normalize-xz"]
-	    },
+		"inputs": ["normalize_velocity_xz"]
+            },
+            {
+		"nodetype": "take",
+		"identifier": "velocity_output_xz",
+		"take_idx": 1,
+		"inputs": ["normalize_velocity_xz"]
+            },
 	    {
-		"nodetype": "keep_vars",
-		"identifier": "keepvars-xz",
-		"vars_to_keep": ["u", "v", "w"],
-		"inputs": ["take-xz"]
+		"nodetype": "take",
+		"identifier": "velocity_norm_params_xz",
+		"take_idx": 2,
+		"inputs": ["normalize_velocity_xz"]
 	    },
-	    {
+            {
 		"nodetype": "zip",
-		"identifier": "zip-input",
-		"inputs": ["keepvars-xy", "keepvars-xz"]
-	    },
-	    {
+		"identifier": "zip_output",
+		"inputs": ["pressure_output", "velocity_output_xy"]
+            },
+            {
 		"nodetype": "concatenate",
-		"identifier": "concat-input",
-		"inputs": ["zip-input"],
+		"identifier": "concatenate_output",
+		"inputs": ["zip_output"],
+		"axis": -1
+            },
+            {
+		"nodetype": "keep_vars",
+		"identifier": "output",
+		"inputs": ["concatenate_output"],
+		"vars_to_keep": ["p"]
+            },
+            {
+		"nodetype": "squeeze",
+		"identifier": "xy-squeeze",
+		"inputs": ["velocity_input_xy"]
+            },
+            {
+		"nodetype": "squeeze",
+		"identifier": "xz-squeeze",
+		"inputs": ["velocity_input_xz"]
+            },
+            {
+		"nodetype": "zip",
+		"identifier": "zip_input",
+		"inputs": ["xy-squeeze", "xz-squeeze"]
+            },
+            {
+		"nodetype": "concatenate",
+		"identifier": "input",
+		"inputs": ["zip_input"],
+		"axis": -1
+            },
+            {
+		"nodetype": "zip",
+		"identifier": "zip_velocity_norm_params",
+		"inputs": ["velocity_norm_params_xy", "velocity_norm_params_xz"]
+            },
+            {
+		"nodetype": "concatenate",
+		"identifier": "concat_velocity_norm_params",
+		"inputs": ["zip_velocity_norm_params"],
 		"axis": -1
 	    },
 	    {
-		"nodetype": "squeeze",
-		"identifier": "input",
-		"inputs": ["concat-input"]
-	    },
-	    {
-		"nodetype": "take",
-		"identifier": "take-output",
-		"take_idx": 1,
-		"inputs": ["normalize-xy"]
-	    },
-	    {
-		"nodetype": "keep_vars",
-		"identifier": "output",
-		"vars_to_keep": ["p"],
-		"inputs": ["take-output"]
+		"nodetype": "zip",
+		"identifier": "norm_params",
+		"inputs": ["pressure_norm_params", "concat_velocity_norm_params"]
 	    },
 	    {
 		"nodetype": "zip",
 		"identifier": "zip_input_output",
-		"inputs": ["input","output"]
-	    },
-	    {
-		"nodetype": "take",
-		"identifier": "take-normparams",
-		"take_idx": 2,
-		"inputs": ["normalize-xy"]
-	    },
-	    {
-		"nodetype": "keep_vars",
-		"identifier": "keepvars-normparams",
-		"inputs": ["take-normparams"],
-		"vars_to_keep": ["p"],
-		"axis": -1
+		"inputs": ["input", "output"]
 	    },
 	    {
 		"nodetype": "zip",
 		"identifier": "zip_input_output_normparams",
-		"inputs": ["input", "output", "keepvars-normparams"]
-	    }
-	]
+		"inputs": ["input", "output", "norm_params"]
+	    }]
     }
 }

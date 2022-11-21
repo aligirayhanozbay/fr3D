@@ -11,7 +11,7 @@
                 "rel_to": ["maximum", "centroid", "centroid"],
                 "ptsreader": {
                         "name": "grid",
-                        "linspace_args": [[0.5,2.5,5], [-2.0,2.0,5], [-4.0,4.0,5]]
+                        "linspace_args": [[0.5,3.5,10], [-2.5,2.5,10], [-4.5,4.5,5]]
                 }
         },
 	"full_field": {

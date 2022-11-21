@@ -203,9 +203,7 @@ def main():
     from sampling_pts import get_samplingptshandler
 
     explanation = '''
-    Postprocess a folder of PyFR results, interpolating the results from each case to specified points.
-
-    This script outputs a .h5 file containing two fields for each PyFR case, the 'sensors' and the 'full_field'.
+    Postprocess a folder of PyFR results, interpolating the results from each case to points specified in a config file.
     '''
     
     parser = argparse.ArgumentParser(explanation)
