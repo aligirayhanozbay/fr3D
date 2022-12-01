@@ -41,8 +41,15 @@ class BaseNormalization:
         else:
             return xhat, yhat
 
-    def undo(self, x, norm_params):
-        raise(NotImplementedError())
+    @tf.function
+    def undo(self, xhat, norm_params):
+
+        if self.batch_mode:
+            x = tf.map_fn(self._undo, elems=(xhat, norm_params), fn_output_signature=xhat.dtype)
+        else:
+            x = self._undo((xhat, norm_params))
+        
+        return x
         
 class MeanCenterNormalization(BaseNormalization):
     name='meancenter'
@@ -53,7 +60,8 @@ class MeanCenterNormalization(BaseNormalization):
         x, norm_params = x
         return x-norm_params
 
-    def undo(self, xhat, norm_params):
+    def _undo(self, x):
+        xhat, norm_params = x
         return xhat+norm_params
 
 class MinMaxNormalization(BaseNormalization):
@@ -69,7 +77,8 @@ class MinMaxNormalization(BaseNormalization):
         xmax = norm_params[...,1]
         return (x-xmin)/(xmax - xmin)
 
-    def undo(self, xhat, norm_params):
+    def _undo(self, x):
+        xhat, norm_params = x
         xmin = norm_params[...,0]
         xmax = norm_params[...,1]
         return xhat*(xmax-xmin)+xmin
@@ -89,7 +98,8 @@ class ZScoreNormalization(BaseNormalization):
         xhat = (x - mu)/std
         return xhat
 
-    def undo(self, xhat, norm_params):
+    def _undo(self, x):
+        xhat, norm_params = x
         mu = norm_params[...,0]
         std = norm_params[...,1]
         return xhat*std+mu
@@ -107,7 +117,8 @@ class UnitVectorNormalization(BaseNormalization):
         x, norm_params = x
         return x/norm_params
 
-    def undo(self, xhat, norm_params):
+    def _undo(self, x):
+        xhat, norm_params = x
         return x*norm_params
 
 class NoneNormalization(BaseNormalization):
@@ -118,7 +129,8 @@ class NoneNormalization(BaseNormalization):
     def _apply(self, x):
         return x[0]
 
-    def undo(self, xhat, norm_params=None):
+    def _undo(self, x):
+        xhat, norm_params = x
         return xhat
 
 def get_normalization(method, **kwargs):
