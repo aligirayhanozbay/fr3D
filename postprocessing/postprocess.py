@@ -8,6 +8,7 @@ import json
 import copy
 import numpy as np
 import h5py
+import time
 
 from sample_native import process_case
 from sampling_pts import get_samplingptshandler
@@ -133,8 +134,9 @@ class PostprocessingManager:
         writer_process = mp.Process(target=self.writer_process)
         for proc in processes:
             proc.start()
+            time.sleep(0.1)
         writer_process.start()
-
+        
         for proc in processes:
             proc.join()
 
