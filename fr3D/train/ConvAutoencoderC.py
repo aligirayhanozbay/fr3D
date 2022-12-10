@@ -62,7 +62,7 @@ with distribute_strategy.scope():
                   optimizer = tf.keras.optimizers.get(config['training']['ae_optimizer']),
                   metrics = config['training'].get('metrics', None),
                   latent_space_step_ratio = config['training'].get('latent_space_step_ratio', 1))
-
+    
     if args.load_weights is not None:
         model.load_weights(args.load_weights)
 
