@@ -1,2 +1,2 @@
-from .normalization import get_normalization
+from .normalization import get_normalization, get_normalization_type
 from .hdf5_train_test_split import hdf5_train_test_split

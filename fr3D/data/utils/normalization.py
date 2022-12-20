@@ -144,7 +144,16 @@ def get_normalization(method, **kwargs):
     normalizer = normalization_class(**kwargs)
 
     return normalizer
-    
+
+def get_normalization_type(node_configs):
+    normalization_spec = {'method': None}
+    for node in node_configs:
+        if node['nodetype'] == 'normalize':
+            normalization_spec = node['normalization_spec']
+            break
+    normalizer = get_normalization(**normalization_spec, batch_mode=True)
+    return normalizer
+
 if __name__ == '__main__':
     mu_inp = 2.0
     std_inp = 0.55
