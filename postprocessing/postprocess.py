@@ -41,9 +41,8 @@ class PostprocessingManager:
         |    ...
         ...
 
-        -output_fields: tuple[str]. fields such as 'Pressure' and 'Velocity' which exist at the end of the paraview pipeline
-        -sampling_pts_sensors: np.ndarray, shape (n_sensorpts, 3). sensor locations.
-        -sampling_pts_fullfield: np.ndarray, shape (n_ffpts, 3). full field grid locations.
+        -sampling_pt_groups: dict[str, dict]. each key is a name for a sampling point group, and the value is the list of kwargs
+        			              for get_samplingptshandler
         -ignore_list: tuple[str]. list of cases to ignore
         -time_window: tuple[str,str]. solutions from times outside this range will be discarded.
         -save_dtype: str. "float32" or "float64".
