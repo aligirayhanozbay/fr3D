@@ -2,7 +2,7 @@
     "sensors-pressure": {
         "name": "pyfrm-annulus",
         "physgrp": "obstacle",
-        "npts": [1,50,20],
+        "npts": [1,50,10],
         "extrusion_dim": 2
     },
     "sensors-xy-velocity": {

@@ -164,7 +164,7 @@
 		"nodetype": "keep_vars",
 		"identifier": "output",
 		"inputs": ["concatenate_output"],
-		"vars_to_keep": ["p"]
+		"vars_to_keep": ["u"]
             },
             {
 		"nodetype": "reshape",
@@ -204,7 +204,7 @@
 		"nodetype": "keep_vars",
 		"identifier": "norm_params",
 		"inputs": ["concat_norm_params"],
-		"vars_to_keep": ["p"],
+		"vars_to_keep": ["u"],
 		"axis": -2
 	    },
 	    {
