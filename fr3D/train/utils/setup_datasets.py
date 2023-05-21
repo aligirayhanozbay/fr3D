@@ -53,7 +53,7 @@ def setup_datasets(config, dataset_path, shuffle_size=500, case_names=False, eva
     if 'train_test_split' in config['dataset']:
         np.random.seed(42)
         train_geometries, test_geometries = hdf5_train_test_split(dataset_path, config['dataset']['train_test_split'][:2], shuffle=True)
-        test_geometries = ['cylinder']
+        
         print(f'Training geometries: {train_geometries}')
         print(f'Test geometries: {test_geometries}')
         train_node_configurations = modify_node_types(node_configs, 'HDF5IODataset', 'groups', train_geometries)
