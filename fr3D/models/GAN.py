@@ -83,10 +83,11 @@ class GAN(tf.keras.models.Model):
         return {'reconstruction_loss': loss_val}
 
 class CGAN(GAN):
-    def __init__(self, input_units, *args, **kwargs):
+    def __init__(self, input_units, *args, auto_build = True, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.latent_space_embedder = self.make_latent_space_embedder(input_units)
+        
 
     def call(self, inp, training=None, autoencode=True):
         if autoencode:
